@@ -47,12 +47,7 @@ These aren't abstract features — here's the actual problem each one solves for
 **Ali's mother**, or a user less comfortable with English, wants the same insight but in Urdu — not just translated button labels, but an Urdu conversation with the Copilot itself.
 → **Urdu + English mode** makes the entire experience — score explanation, Copilot chat, suggestions — usable in the language the user actually thinks in. This is the difference between a tool built *for* Pakistan vs. one just *localized* for it.
 
-### Scenario 5 (stretch): "I pay into a committee (BC) — can I trust the other members?"
-Committees (BC/ROSCA) run entirely on informal trust; people default and there's no record of who's reliable.
-→ **Committee Trust Score** (optional) gives a simple, transparent score from mock payment history — a small step toward making informal savings groups less risky, without pretending to be a lending platform.
-
-**Why this matters for judges:** every "must-have" feature maps to a specific, named user moment above — this isn't feature-creep, it's one coherent flow solving one connected problem (understand → decide → act).
-
+.
 ---
 
 ## 🧱 Tech Stack

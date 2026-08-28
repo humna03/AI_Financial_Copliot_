@@ -1,185 +1,292 @@
-AI Financial Copilot
-Product Requirements Document (PRD) — Hackathon MVP
-Domain: Financial Inclusion | Team of 4 | Pakistan
+AI Financial Copilot — AGENTS.md
+1. Purpose
+This file contains instructions for AI coding agents (e.g. OpenCode) working in this repository. Before making any change, an agent must understand what this project is and which documents govern it. AGENTS.md defines development rules and behavior — it does not replace the project's actual requirements, which live in the documents listed in Section 3.
 
-1. Product Overview
-AI Financial Copilot is a hackathon MVP that helps people in Pakistan understand and improve their financial health.
+2. Project Overview
+AI Financial Copilot is a hackathon MVP for the financial inclusion domain in Pakistan. It helps users understand their financial health, get personalized AI-backed advice, and test spending decisions before making them — in Urdu or English.
 
-Most existing finance apps (banking apps, JazzCash, Easypaisa, etc.) only show what already happened — past transactions, balances, and charts. Our app goes one step further: it tells users how healthy their finances are, why, and what to do next, and lets them test financial decisions before making them in real life.
+Core MVP features: Financial Data Input, Financial Health Score, AI Copilot, What-If Simulator, Urdu + English support, Dashboard, and Financial Goals.
 
-The MVP has three core parts:
+Confirmed stack: Python, FastAPI, Pydantic, SQLModel, SQLite, and Qwen (via Alibaba Cloud) for AI. Development is AI-assisted ("vibe coding") using OpenCode, done in small, reviewable tasks across a 4-person team.
 
-A Financial Health Score with a clear explanation.
-An AI Copilot that gives personal, data-aware financial advice.
-A What-If Simulator that shows the effect of a spending change instantly.
-Everything works in Urdu and English, since this is a Pakistan-focused product.
+3. Source of Truth
+Document	Purpose	Authority
+PRD.md	What the product must do	Product requirements — highest authority for scope and features
+ARCHITECTURE.md	How the system is structured	Authority for component boundaries and structure
+DATA_MODEL.md	What data is stored and where	Authority for database entities and fields
+API_CONTRACT.md	How frontend and backend communicate	Authority for endpoints, request/response shapes
+DEVELOPMENT_PLAN.md	What to build, in what order, who owns what	Authority for task sequencing and ownership
+DEFINITION_OF_DONE.md	When a task is actually finished	Authority for completion criteria
+This file (AGENTS.md) does not duplicate their contents — it tells the agent how to work with them. When these documents conflict with anything in this file, the documents above win; this file only governs agent behavior and discipline.
 
-2. Problem
-People can already send money, pay bills, and see their transaction history. What they can't easily do is answer two simple questions:
+4. General Agent Rules
+The agent MUST:
 
-A. "Am I financially healthy?" Users know their income and expenses, but have no simple way to judge their overall financial condition, or what's dragging it down.
+Read relevant documentation before coding.
+Inspect existing code before changing it.
+Understand the task before implementing.
+Make the smallest reasonable change.
+Follow the existing architecture, data model, and API contract.
+Preserve existing functionality.
+Avoid unnecessary dependencies or refactoring.
+Test its changes and verify actual results.
+Clearly report what it changed.
+The agent MUST NOT:
 
-B. "What will happen if I keep spending like this — and what should I change?" Users see the past, not the future. They don't know how a small change (like spending less on food) would actually affect their savings or their goals.
+Invent requirements.
+Add unrequested features.
+Rewrite the project unnecessarily.
+Change architecture, API contracts, or database structure without a documented reason.
+Expose secrets.
+Claim success without verification.
+5. Before Starting Any Task
+Read the task/request.
+Identify which project documents are relevant to it.
+Read those documents (only the relevant ones — not the entire set every time).
+Inspect the existing repository structure.
+Find the relevant existing code.
+Understand dependencies and existing behavior.
+Create a short implementation plan.
+Only then start coding.
+6. Task Execution Workflow
+Understand → Inspect → Plan → Implement → Test → Verify → Review → Report
 
-These two problems are connected: a user first needs to understand where they stand (the score), and then needs help deciding what to do about it (the Copilot and simulator).
+Understand: what is actually being asked.
+Inspect: what already exists in the code.
+Plan: the smallest change that satisfies the task.
+Implement: make that change only.
+Test: run relevant checks.
+Verify: confirm the real output matches expectations.
+Review: check the diff for unrelated changes.
+Report: summarize per Section 29.
+Avoid large, uncontrolled changes at any step.
 
-3. Target Users
-Priority	User	Why they need this
-Primary	Salaried / young working people in Pakistan	Fixed income, want to understand spending and save more, but lack tools that explain their financial condition
-Secondary	Freelancers and gig workers	Irregular income, could benefit from the same core tools; an income-smoothing mode is a possible add-on if time allows
-The MVP uses one core product flow for all users. It does not build separate journeys per user type.
+7. Scope Control
+Implement only the requested task.
+Do not add "nice-to-have" features automatically.
+Do not introduce technologies without a clear need.
+Do not refactor unrelated code.
+Do not optimize prematurely.
+Do not create unnecessary abstractions.
+Do not increase complexity just to look more "professional."
+For this hackathon MVP: working, verified functionality beats impressive-looking complexity.
 
-4. Proposed Solution
-Component	What it does
-Financial Health Score	A transparent, formula-based score (e.g. 72/100) calculated from income, expenses, and savings — with a plain-language reason and improvement tips
-AI Copilot	A chat assistant that uses the user's own financial numbers to answer budgeting, saving, and spending questions — not a generic chatbot
-What-If Simulator	Lets a user change an expense and instantly see the effect on savings, score, and goal progress
-Urdu + English	The whole experience, including the Copilot's answers, works in either language
-AI is used where it adds real value (explaining the score, holding a contextual conversation) — not for the scoring itself, since a transparent formula is more realistic and more explainable for a hackathon demo.
+8. Architecture Rules
+Respect the separation defined in ARCHITECTURE.md:
 
-5. Core Value / USP
-Our USP is not "an AI financial chatbot."
+API/routes
+Schemas/validation
+Business logic/services
+Database/models
+AI integration
+Do not invent additional layers (no new services, queues, or microservices). Keep the architecture as simple as ARCHITECTURE.md describes it.
 
-AI Financial Copilot understands a user's financial health, explains it clearly, helps them see what their spending choices lead to, and lets them test decisions safely before making them — all in Urdu or English.
+9. Backend Rules
+Use the FastAPI conventions already established in the repository.
+Use Pydantic for request/response validation.
+Use SQLModel according to DATA_MODEL.md.
+Use SQLite as the only MVP database.
+Keep business logic (Score Engine, What-If Engine) separate from route handlers.
+Validate user input and return errors per API_CONTRACT.md.
+Do not introduce another backend framework.
+10. Database Rules
+Follow DATA_MODEL.md exactly — no unnecessary tables or fields.
+Do not store data that should simply be calculated (e.g. goal progress).
+Avoid destructive database changes unless explicitly required; preserve existing data where possible.
+If a database change is genuinely required: identify its impact, update DATA_MODEL.md, and test the change.
+11. Financial Health Score Rules
+The score is deterministic; the backend is the sole source of truth.
+AI does not decide the authoritative score — it only explains it.
+The calculation must follow the finalized scoring rules from the source documents.
+Score-related logic must be testable.
+The agent must not invent a new scoring formula.
+If the scoring formula is unclear or missing: STOP and report the issue. Do not guess.
 
-We are positioning this as an AI Financial Decision Support tool, not another expense tracker.
+12. What-If Simulator Rules
+Keep simulation calculations deterministic.
+Never modify the user's real, stored financial data during a simulation.
+Treat scenario inputs as temporary values, not new stored records.
+Return the required calculated results (savings, score, goal progress).
+Reuse the existing Score Engine logic — do not duplicate calculation code.
+Do not create permanent scenario storage unless explicitly required by the source documents.
+13. AI Copilot Rules
+Frontend → FastAPI Backend → Financial Context → Qwen → FastAPI Backend → Frontend
 
-6. MVP Features (Must Have)
-These are the only features required for a strong, working hackathon demo. If we finish only this list, we still have a complete product.
+The agent MUST:
 
-6.1 Financial Data Input
-Manual entry of financial data (income, expenses by category, savings, one goal).
-Optional: uploading a simple sample/mock financial statement, if time allows. Manual entry alone is sufficient for the demo and must not be blocked by the upload feature.
-No live bank integration required.
-Data is stored in SQLite for the duration of the demo (see Section 12).
-6.2 Financial Health Score
-A simple score (e.g. 72/100) from a transparent, rule-based formula.
-Shows the main contributing factors, the reason for the score, and 1–2 improvement suggestions.
-The exact formula is a backend implementation decision to be finalized by the team before development (see Section 10 and ARCHITECTURE.md). It must stay simple, deterministic, and explainable — not an ML model.
-6.3 AI Copilot
-A contextual chat that uses the user's actual income/expense data.
-Answers budgeting, saving, spending, and goal-related questions, and gives simple risk warnings (e.g. "your food spending is unusually high this month").
-The Copilot explains and advises; it never calculates the Financial Health Score itself and never edits the user's financial data.
-6.4 What-If Simulator
-User adjusts a chosen expense (e.g. food) and instantly sees the effect on:
-monthly savings
-Financial Health Score
-goal progress
-All effects are calculated deterministically by the backend, using the same formula as the Financial Health Score.
-This is the core "wow" moment of the demo — it must be fast and visually clear.
-6.5 Urdu + English Support
-User picks a language at the start.
-The UI and the Copilot's answers work in the selected language (not just translated labels).
-6.6 Simple Dashboard
-Shows, in one clean screen:
+Keep AI credentials/secrets on the backend only.
+Never expose API keys to the frontend.
+Send only the relevant financial context needed to answer the question.
+Support English and Urdu as required.
+Handle AI service failures gracefully.
+Prevent AI from directly modifying financial records.
+Prevent AI from becoming the authoritative source for deterministic calculations.
+The agent MUST NOT:
 
-Financial Health Score
-Savings summary
-Key spending info
-Financial goal
-Entry points to the Copilot and the What-If Simulator
-7. Optional Features (Add Only If Time Remains)
-Build the Must-Have list first. Only attempt these if there is genuine time left before the deadline — none of them are required for a complete project. Optional features must never block or delay any Must-Have feature.
+Let the frontend call Qwen directly.
+Let AI modify database records directly.
+Use AI to calculate the authoritative Financial Health Score.
+Add RAG, fine-tuning, or autonomous agent systems unless explicitly required.
+14. API Rules
+Follow API_CONTRACT.md. Before changing an endpoint:
 
-Committee (BC/ROSCA) Trust Score — a simple, transparent score based on mock payment history, showing how reliably a member pays into a savings committee. If included: no real lending, no real transactions, no AI fraud model — just a clear rule (e.g. based on on-time payment %).
-Irregular Income Mode — a smoothed budget suggestion for freelancers/gig workers based on average income.
-Simple proactive spending warning — a one-off example alert (e.g. "spending 30% above usual this week").
-Financial Future/Twin projection — a simple chart projecting current habits 6–12 months forward.
-Basic gamification — a simple streak or badge for staying within budget.
-Sample statement upload (from 6.1) — if manual entry alone is not enough time to also support file upload, upload can be deferred here.
-8. Out of Scope (Not Part of This MVP)
-To keep the project realistic for a 4-person team in hackathon time, the following are explicitly not built:
+Inspect the existing endpoint.
+Check the API contract.
+Check how the frontend uses it, if available.
+Check request/response models.
+Consider integration impact.
+Do not casually rename or remove endpoints. If a contract change is genuinely required: identify it clearly, update API_CONTRACT.md, update dependent code, and test the change.
 
-Live bank API integrations
-Real money transfers, real lending, or any real financial transactions
-Production-level or ML-based fraud detection
-Peer-to-peer lending marketplace
-Large-scale recommendation engine
-Any ML model that needs training data we don't have
-Complex authentication systems (unless trivially needed for the demo)
-Large-scale notification infrastructure
-Support for regional languages beyond Urdu and English
-Advanced gamification
-Enterprise-level scalability, uptime, or encryption standards
-These may become Future Ideas (Section 16), but they are not promises for this build.
+15. Frontend Integration Rules
+The frontend depends entirely on API_CONTRACT.md. Do not make backend changes that silently break frontend expectations. When an API response changes:
 
-9. User Flow
-The main demo story, start to finish:
+Check API_CONTRACT.md.
+Check frontend consumers if available.
+Update dependent code as needed.
+Test the integration.
+16. Urdu + English Rules
+Preserve the selected language's behavior across features.
+Do not hard-code English-only responses where bilingual support is required.
+Ensure language changes never affect financial calculations — the numbers must be identical regardless of language.
+Ensure AI responses follow the requested language.
+Do not duplicate APIs per language — one endpoint, driven by a language field/preference.
+17. Error Handling Rules
+Handle relevant cases: invalid input, missing required data, invalid financial values, database errors, AI service failures, invalid simulation values.
 
-User opens the app.
-User selects Urdu or English.
-User enters sample financial data (manual entry; upload if time allows).
-App calculates the Financial Health Score.
-User sees the score and the reasons behind it.
-User sees improvement suggestions.
-User opens the AI Copilot and asks a financial question.
-Copilot answers using the user's actual data.
-User opens the What-If Simulator.
-User changes an expense value.
-App instantly shows the effect on savings and score.
-User sees how the change affects their financial goal.
-This single flow is the entire demo — we are not building multiple parallel user journeys.
+Do not hide errors silently.
+Do not expose internal secrets or sensitive implementation details to users.
+18. Security and Secrets
+The agent MUST:
 
-10. AI Usage
-AI is used in exactly two places, both chosen because they add real value:
+Never hard-code API keys.
+Never commit secrets.
+Use environment variables for all secrets.
+Avoid logging sensitive financial information unnecessarily.
+Validate incoming data.
+Avoid exposing internal error details unnecessarily.
+If a secret is discovered in the repository: do not copy it elsewhere, report the issue, and do not expose it in any response. Do not introduce enterprise security systems beyond these basics.
 
-Where	How
-AI Copilot	Uses Qwen (via Alibaba Cloud, per hackathon track requirements) with the user's financial data passed in as context, so answers are personal and grounded in real numbers
-Financial Health Score explanations	The score itself comes from a transparent formula (not an ML model, since we don't have labelled training data); AI is used to turn the calculated factors into a simple, readable explanation and suggestions
-We are not claiming AI/ML where a simple formula does the job. The backend always calculates the score and the What-If results; AI is never used to decide or override them. This keeps the score explainable and trustworthy for the demo.
+19. Code Quality Rules
+Code should be readable, simple, maintainable, appropriately structured, and consistently named, with minimal duplication.
 
-11. Data Requirements
-The MVP uses mock, manually entered, or sample financial data only — no real bank connection.
+Avoid: unnecessary abstractions, unnecessary design patterns, huge functions, dead code, debug statements, unused dependencies, and unrelated refactoring.
 
-Minimum data needed:
+20. Testing Rules
+Use the testing approach defined in DEVELOPMENT_PLAN.md and DEFINITION_OF_DONE.md. Depending on the task, test: business logic, API endpoints, database operations, validation, the Financial Health Score, What-If calculations, AI integration, language behavior, and the relevant integration flow.
 
-Income
-Expenses (with basic categories, e.g. food, rent, transport, bills)
-Savings
-One financial goal (e.g. a savings target)
-Additional data (e.g. committee payment history) is only collected if an optional feature actually needs it.
+Run only the checks relevant to the change — not everything, every time.
 
-12. Technology Overview (Confirmed)
-Layer	Technology	Purpose	Status
-Backend / API	Python + FastAPI	Connects frontend, Copilot, and scoring logic	Confirmed
-Database	SQLite	Stores user financial data, score results, and goal data for the demo	Confirmed — used instead of a more complex database system
-AI Copilot	Qwen (Alibaba Cloud)	Powers the contextual chat responses	Confirmed — required by hackathon track
-Frontend	Simplest practical web framework based on team familiarity	Dashboard, Copilot chat UI, What-If Simulator UI, language switch	Team decision — to be chosen before development starts; kept deliberately simple
-We are keeping the architecture simple and only listing tools we actually plan to use — no infrastructure is added just to look impressive. Detailed technical structure is defined separately in ARCHITECTURE.md.
+21. Verification Rules
+The agent must verify the actual result. It must NOT say "implementation complete" only because code was generated successfully.
 
-13. Team Responsibilities
-We are a team of 4. Suggested primary ownership (not rigid — everyone can help elsewhere):
+After coding:
 
-Role	Primary Focus
-Backend / Data	Data input, Financial Health Score formula, SQLite schema, API
-AI / Copilot	Qwen integration, context design, Urdu + English handling
-Frontend / UI	Dashboard, What-If Simulator UI, language switch
-Integration / Testing / Product	Connecting the pieces, testing the full demo flow, pitch/demo prep
-Before development starts, the team agrees on shared data formats and API shapes (e.g. what the score endpoint returns) so everyone's work fits together without rework.
+Run relevant tests/checks.
+Inspect errors.
+Fix genuine issues.
+Re-run tests.
+Verify expected behavior.
+Check for unintended changes.
+If something could not be tested, say so explicitly in the report.
 
-14. Development Priority
-Core MVP first → testing → polish → optional features.
+22. Definition of Done
+Use DEFINITION_OF_DONE.md as the authority for when a task is actually finished. Before declaring any task complete, check it against the relevant checklist in that document — do not duplicate that checklist here.
 
-Finish all Must-Have features (Section 6) before touching anything in Section 7.
-The team must be able to stop after the Must-Have list and still present a complete, working product.
-Optional features are only attempted once the core demo flow (Section 9) works end-to-end without errors.
-15. Success Criteria
-All Must-Have features (Section 6) work live in the demo.
-The full user flow (Section 9) can be completed start to finish without errors.
-The What-If Simulator clearly and quickly shows its value — a judge should understand it within seconds.
-The Copilot gives answers that clearly use the user's own financial data, in both Urdu and English.
-The project still makes complete sense even if every optional feature (Section 7) is removed.
-Alibaba Cloud tooling (Qwen) is used correctly and shown clearly in the pitch.
-16. Future Ideas
-Not part of this hackathon build — only mentioned to show direction:
+23. Git Rules
+Work only on the assigned branch.
+Avoid modifying another member's unrelated work.
+Create focused commits with clear messages.
+Avoid committing generated junk files or secrets.
+Before finishing, inspect git status and git diff to confirm only the intended files changed.
+24. Documentation Change Rules
+If an implementation changes something defined in the project documentation, update the relevant document:
 
-Committee (BC/ROSCA) Trust Score with a fuller, AI-assisted risk model
-Real bank account integration
-Production-level fraud/scam detection
-Peer-group micro-lending matchmaking
-Proactive notification system
-Financial Twin / long-term projection tools
-Support for additional regional languages
-Deeper gamification and streak systems
-Persistent, multi-session storage beyond the hackathon demo
-This PRD intentionally describes only what a 4-person team can realistically build and demo in the hackathon — not everything the product could eventually become.
+API change → API_CONTRACT.md
+Database change → DATA_MODEL.md
+Architecture change → ARCHITECTURE.md
+Development process change → DEVELOPMENT_PLAN.md
+Do not modify documentation for internal implementation details that don't change any documented contract.
+
+25. Handling Unclear Requirements
+If a task is ambiguous:
+
+Inspect the project documents.
+Inspect existing code.
+Look for an existing project convention.
+Prefer the simplest interpretation already supported by the documentation.
+If the decision could affect architecture, API, database, or product behavior — do not guess.
+Report the ambiguity and ask for clarification.
+The agent must never invent a major product decision on its own.
+
+26. Handling Conflicts
+If two source documents conflict:
+
+Do not silently choose one.
+Identify the conflict clearly.
+Check whether the hierarchy in Section 3 resolves it (PRD.md is the highest-level requirement authority).
+If it doesn't resolve safely, report the conflict before making a risky change.
+27. Dependency Rules
+Before adding a new package:
+
+Is it actually required?
+Can the task be solved with the existing stack?
+Does it increase complexity?
+Does it conflict with the hackathon constraints?
+Prefer existing dependencies. If a new one is genuinely required: use a stable, appropriate package, add it correctly to the dependency file, verify it works, and explain why it was added.
+
+28. OpenCode Working Style
+Work incrementally. A good task looks like:
+
+"Implement X according to Y document."
+
+Not:
+
+"Build the entire application."
+
+Inspect before editing.
+Make focused changes.
+Test after changes.
+Avoid uncontrolled large rewrites.
+Report completed work and verification.
+If a requested task is too large, break it into smaller logical steps rather than attempting one uncontrolled rewrite.
+
+29. Agent Completion Report
+At the end of a task, provide a concise report:
+
+Changed — what files/features were changed. Why — what requirement the change satisfies. Tests — what tests/checks were run. Result — whether they passed. Notes — any limitations, unresolved issues, or decisions required.
+
+Keep it short — no long explanations.
+
+30. Never Do These Things
+Do not invent requirements.
+Do not add unnecessary features.
+Do not rewrite unrelated code.
+Do not expose secrets or hard-code API keys.
+Do not let the frontend call Qwen directly.
+Do not let AI control the authoritative Financial Health Score.
+Do not overwrite real financial data during a What-If simulation.
+Do not change API contracts casually.
+Do not change database structure without considering DATA_MODEL.md.
+Do not claim tests passed without running them.
+Do not claim a task is complete without verification.
+Do not introduce unnecessary technologies.
+Do not over-engineer the MVP.
+31. Final Agent Checklist
+Before declaring a task complete:
+
+[ ] Relevant documentation was read
+[ ] Existing code was inspected
+[ ] Task scope is understood
+[ ] Only required changes were made
+[ ] Architecture was respected
+[ ] Data model was respected
+[ ] API contract was respected
+[ ] Validation was handled
+[ ] Relevant tests/checks were run
+[ ] Actual behavior was verified
+[ ] No secrets were exposed
+[ ] No unrelated files were changed
+[ ] Documentation was updated if necessary
+[ ] git diff was reviewed
+[ ] Definition of Done is satisfied
+[ ] Final report clearly states what changed and what was verified

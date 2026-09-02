@@ -167,7 +167,7 @@ No body. Requires that financial data (Section 6.1) has already been submitted.
 `404 Not Found` (no financial data submitted yet), `500 Internal Server Error` (calculation failure), `502 Bad Gateway` (Qwen unavailable — score and factors are still returned; only the phrased explanation/suggestions may fall back to a simple default, per `ARCHITECTURE.md` Section 14)
 
 #### Notes
-- **Exact scoring formula: Decision Required.** `DATA_MODEL.md` (Section 9) and `PRD.md` (Section 6.2) leave the precise formula/weights to be finalized by the team before development. This endpoint's contract (score + factors + explanation) does not depend on the exact formula chosen.
+- **Finalized scoring formula** (0–100): Savings Rate (40 pts), Expense Control (35 pts), Goal Progress (25 pts). See `ARCHITECTURE.md` Section 7 for exact thresholds and scoring rules.
 - The score is always calculated by the backend. The AI never determines or overrides `score`.
 
 ---

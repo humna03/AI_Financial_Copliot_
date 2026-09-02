@@ -78,9 +78,10 @@ These are the only features required for a strong, working hackathon demo. If we
 - Data is stored in **SQLite** for the duration of the demo (see Section 12).
 
 ### 6.2 Financial Health Score
-- A simple score (e.g. 72/100) from a transparent, rule-based formula.
+- A simple score (0–100) from a transparent, rule-based formula.
 - Shows the main contributing factors, the reason for the score, and 1–2 improvement suggestions.
-- The exact formula is a **backend implementation decision** to be finalized by the team before development (see Section 10 and ARCHITECTURE.md). It must stay simple, deterministic, and explainable — not an ML model.
+- The formula has three components: Savings Rate (40 points), Expense Control (35 points), and Goal Progress (25 points). The exact thresholds and scoring rules are defined in `ARCHITECTURE.md` Section 7.
+- Score is deterministic and explainable — not an ML model.
 
 ### 6.3 AI Copilot
 - A contextual chat that uses the user's actual income/expense data.

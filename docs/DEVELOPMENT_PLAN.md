@@ -64,7 +64,7 @@ This document tells the 4-person team what to build, in what order, who owns wha
 
 ### Phase 3 — Core Financial Logic
 - **Goal:** The deterministic Score Engine and What-If Engine exist and are correct.
-- **Tasks:** implement the Financial Health Score formula (team must finalize the exact formula/weights first — flagged as "Decision Required" in `DATA_MODEL.md` and `API_CONTRACT.md`); implement score factors output; implement goal progress calculation; implement the What-If Engine reusing the Score Engine logic (per `ARCHITECTURE.md` Section 8); wire up `GET /score` and `POST /simulate`.
+- **Tasks:** implement the Financial Health Score formula (finalized in `ARCHITECTURE.md` Section 7); implement score factors output; implement goal progress calculation; implement the What-If Engine reusing the Score Engine logic (per `ARCHITECTURE.md` Section 8); wire up `GET /score` and `POST /simulate`.
 - **Owner:** Member 1.
 - **Dependencies:** Phase 2 complete (needs stored financial data to calculate against).
 - **Expected output:** Score and What-If endpoints return correct, deterministic numbers for known test inputs.

@@ -158,11 +158,12 @@ Three kinds of values are involved:
 | Kind | Examples | Stored? |
 |---|---|---|
 | Raw user data | monthly_income, monthly_savings, expenses by category | Yes — in Financial Profile / Expense |
-| Calculated values | goal progress, What-If results | No — calculated on request |
+| Calculated values | goal progress, What-If results, score components | No — calculated on request |
 | Score-related values | score_value, factors_summary | Yes — in Score Result, as the one stored calculated value (for Dashboard performance) |
 
 - The Financial Health Score is **always calculated deterministically by the backend Score Engine** from raw user data. It is never calculated or modified by Qwen.
-- **Exact scoring formula: Decision Required.** The PRD (Section 6.2 / 10) intentionally leaves the precise formula and factor weights to be finalized by the Backend/Data owner before development. This data model only defines where the *result* of that formula is stored (`Score Result`), not the formula itself.
+- The **scoring formula has been finalized** by the team. It combines three components (Savings Rate 40 pts, Expense Control 35 pts, Goal Progress 25 pts = 100 max). See `ARCHITECTURE.md` Section 7 for the exact thresholds.
+- **Goal Progress calculation:** `progress_percent = (annual_savings / target_amount) × 100`, where `annual_savings = monthly_savings × 12`, capped at 100%. This is calculated on request from `monthly_savings` (Financial Profile) and `target_amount` (Goal) — no additional stored field is required for the current MVP.
 - Whenever the Financial Profile or Expenses change, the backend should recalculate the score and write a new `Score Result` row (or update the existing one) so the Dashboard always reflects current data.
 
 ---

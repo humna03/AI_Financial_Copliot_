@@ -75,7 +75,7 @@ Not required: microservices, complex deployment pipelines, enterprise monitoring
 The Financial Health Score feature is DONE only when:
 
 - Required financial inputs (income, expenses, savings) are validated before calculation.
-- The calculation follows the formula finalized by the team (per `DATA_MODEL.md` Section 9 / `API_CONTRACT.md` Section 7 — marked "Decision Required" until the team finalizes it; once finalized, the implementation must match exactly what was agreed).
+- The calculation follows the finalized formula (per `DATA_MODEL.md` Section 9 and `ARCHITECTURE.md` Section 7 — Savings Rate 40 pts, Expense Control 35 pts, Goal Progress 25 pts). The implementation must match exactly what is documented.
 - The calculation is deterministic — the same input always produces the same score.
 - The backend is the sole source of truth for the score value.
 - The AI (Qwen) does not determine, adjust, or override the score — it only explains it.

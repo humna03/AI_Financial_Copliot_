@@ -114,7 +114,39 @@ No additional layers (no microservices, no message queues, no separate scoring s
 - **Inputs**: income, expenses (by category), savings, and the user's financial goal.
 - The **backend Score Engine** calculates the score, the contributing factors, and which factors are dragging the score down.
 - **AI (Qwen)** is only used afterward, to turn the calculated factors into a plain-language explanation and 1–2 improvement suggestions — it explains the result, it does not decide it.
-- The exact scoring formula (e.g. specific weights for savings rate, expense ratio, etc.) is **not yet defined** and is a **small implementation decision** for the Backend/Data owner to finalize early in development — it should stay simple and easy to explain in one sentence per factor.
+- **Finalized scoring formula** (0–100 total):
+
+  | Component | Max Points | Calculation | Source |
+  |---|---|---|---|
+  | Savings Rate | 40 | `monthly_savings / monthly_income` | Financial Profile |
+  | Expense Control | 35 | `total_expenses / monthly_income` | Financial Profile + Expenses |
+  | Goal Progress | 25 | `annual_savings / target_amount` (capped at 100%) | Financial Profile + Goal |
+
+  - **Savings Rate (40 points):**
+    - `>= 20%` → 40 points
+    - `15–19.99%` → 32 points
+    - `10–14.99%` → 24 points
+    - `5–9.99%` → 16 points
+    - `1–4.99%` → 8 points
+    - `0%` → 0 points
+  - **Expense Control (35 points):**
+    - `<= 50%` → 35 points
+    - `51–60%` → 28 points
+    - `61–70%` → 21 points
+    - `71–80%` → 14 points
+    - `81–90%` → 7 points
+    - `> 90%` → 0 points
+  - **Goal Progress (25 points):**
+    - Progress = `annual_savings / target_amount` (where `annual_savings = monthly_savings × 12`).
+    - `>= 100%` → 25 points
+    - `75–99.99%` → 18 points
+    - `50–74.99%` → 12 points
+    - `25–49.99%` → 6 points
+    - `1–24.99%` → 2 points
+    - `0%` (or no goal) → 0 points
+
+  - **Final Score = Savings Score + Expense Control Score + Goal Progress Score (0–100).**
+  - **Known limitation:** The current MVP only stores `monthly_savings` (current period), not accumulated savings. Goal Progress therefore measures what *one year of current savings* would cover relative to the target — not actual accumulated progress. If accumulated savings becomes a stored field in a future iteration, this component must be updated.
 
 ---
 

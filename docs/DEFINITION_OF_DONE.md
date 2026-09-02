@@ -78,7 +78,7 @@ The Financial Health Score feature is DONE only when:
 - The calculation follows the finalized formula (per `DATA_MODEL.md` Section 9 and `ARCHITECTURE.md` Section 7 — Savings Rate 40 pts, Expense Control 35 pts, Goal Progress 25 pts). The implementation must match exactly what is documented.
 - The calculation is deterministic — the same input always produces the same score.
 - The backend is the sole source of truth for the score value.
-- The AI (Qwen) does not determine, adjust, or override the score — it only explains it.
+- The AI (Gemini) does not determine, adjust, or override the score — it only explains it.
 - The score's contributing factors can be shown and explained to the user.
 - Test cases with known sample inputs confirm the expected score and factors.
 - Reasonable edge cases are handled (e.g. zero expenses, zero income) without crashing.
@@ -94,7 +94,7 @@ The What-If Simulator is DONE only when:
 - The user can submit a supported scenario (a category + new amount, per `API_CONTRACT.md` Section 8).
 - The scenario is treated as temporary — nothing is written to the database unless the user explicitly applies the change via the normal financial-data update endpoint.
 - The user's real stored financial data is never accidentally overwritten by a simulation call.
-- The backend (not the frontend, not Qwen) calculates the simulated result.
+- The backend (not the frontend, not Gemini) calculates the simulated result.
 - The result correctly reflects the changed value using the same logic as the Score Engine.
 - The response includes the required outputs — simulated savings, score, and goal progress.
 - Calculation tests confirm correct results for known scenarios.
@@ -105,17 +105,17 @@ The What-If Simulator is DONE only when:
 
 The AI Copilot feature is DONE only when:
 
-- The Qwen/Alibaba Cloud connection works reliably from the backend.
-- Only the backend communicates with Qwen — the frontend never calls it directly.
+- The Gemini/Google connection works reliably from the backend.
+- Only the backend communicates with Gemini — the frontend never calls it directly.
 - API keys/secrets are stored in environment variables and never exposed to the frontend or in responses.
-- Relevant user financial context (per `DATA_MODEL.md` Section 11) is assembled server-side and passed to Qwen.
+- Relevant user financial context (per `DATA_MODEL.md` Section 11) is assembled server-side and passed to Gemini.
 - Only the context needed to answer the question is sent — no unnecessary or unrelated sensitive data.
 - AI responses are grounded in the provided context, not generic advice.
 - The AI cannot create, update, or delete any database record.
 - The AI is never treated as the source of truth for the Financial Health Score.
 - English responses work correctly.
 - Urdu responses work correctly.
-- A Qwen failure is handled gracefully (returns a fallback message, per `API_CONTRACT.md` Section 16) instead of crashing the request.
+- A Gemini failure is handled gracefully (returns a fallback message, per `API_CONTRACT.md` Section 16) instead of crashing the request.
 - Copilot behavior has been tested with real questions in both languages, including a simulated failure case.
 
 Not required: RAG pipelines, fine-tuning, autonomous multi-step agents, or any AI system beyond the single-call Copilot and score-explanation defined in the source documents.
@@ -191,7 +191,7 @@ FastAPI
    ↓
 SQLite / Financial Logic
    ↓
-Qwen (where required)
+Gemini (where required)
    ↓
 FastAPI
    ↓
@@ -219,7 +219,7 @@ Focus testing effort on what actually protects the MVP demo:
 - What-If calculations produce correct results and never modify stored data.
 - Each API endpoint returns the right shape and status code for success and failure.
 - Database operations correctly save and retrieve data.
-- The AI Copilot responds correctly to sample questions, and fails gracefully when Qwen is unavailable.
+- The AI Copilot responds correctly to sample questions, and fails gracefully when Gemini is unavailable.
 - Urdu and English both work for UI and AI-generated text.
 - Frontend and backend work together, not just individually.
 - The complete demo flow (per `DEVELOPMENT_PLAN.md` Section 16) runs end-to-end without errors.
@@ -276,7 +276,7 @@ The full MVP is DONE only when all of the following are true:
 - [ ] The FastAPI backend implements every endpoint in `API_CONTRACT.md`.
 - [ ] The SQLite database stores and retrieves data correctly.
 - [ ] The frontend is fully integrated with the real backend (no leftover mock data).
-- [ ] The Qwen integration works and fails gracefully when unavailable.
+- [ ] The Gemini integration works and fails gracefully when unavailable.
 - [ ] Major error cases across the system are handled.
 - [ ] Core tests/checks (Section 13) pass.
 - [ ] The complete demo flow (per `DEVELOPMENT_PLAN.md` Section 16) runs from beginning to end without errors, at least twice in a row.

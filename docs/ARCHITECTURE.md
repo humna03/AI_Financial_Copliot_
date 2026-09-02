@@ -37,14 +37,14 @@ This document defines the practical technical architecture for the AI Financial 
    v                             v
 Core Application Services     AI Integration Layer
 (Score Engine,                 (builds context,
- What-If Engine,                calls Qwen)
+What-If Engine,                 calls Gemini)
  Data Handling)                     |
    |                                v
-   v                              Qwen
-SQLite Database                (Alibaba Cloud)
+   v                              Gemini
+SQLite Database                (Google)
 ```
 
-The frontend never talks to SQLite or Qwen directly. Every request goes through the FastAPI backend, which decides what to calculate, what to store, and what (if anything) to send to Qwen.
+The frontend never talks to SQLite or Gemini directly. Every request goes through the FastAPI backend, which decides what to calculate, what to store, and what (if anything) to send to Gemini.
 
 ---
 
@@ -52,7 +52,7 @@ The frontend never talks to SQLite or Qwen directly. Every request goes through 
 
 ### Frontend
 - What it does: Collects user input, displays the Dashboard, Financial Health Score, Copilot chat, and What-If Simulator results; handles the Urdu/English language switch.
-- What it does NOT do: Calculate the score, run What-If logic, or call Qwen directly. It only calls the backend API and renders what it gets back.
+- What it does NOT do: Calculate the score, run What-If logic, or call Gemini directly. It only calls the backend API and renders what it gets back.
 
 ### FastAPI Backend
 - What it does: Validates input, stores and retrieves data, runs the Score Engine and What-If Engine, builds context for the AI Copilot, and returns responses to the frontend.
@@ -67,14 +67,14 @@ The frontend never talks to SQLite or Qwen directly. Every request goes through 
 - What it does NOT do: Change or save the user's real data — it only calculates a hypothetical outcome unless the user explicitly chooses to apply it.
 
 ### AI Copilot (AI Integration Layer)
-- What it does: Sends the user's question plus relevant financial context (assembled by the backend) to Qwen, and returns Qwen's answer, in the selected language.
+- What it does: Sends the user's question plus relevant financial context (assembled by the backend) to Gemini, and returns Gemini's answer, in the selected language.
 - What it does NOT do: Calculate the score, modify financial records, or receive more data than it needs to answer the question.
 
 ### SQLite Database
 - What it does: Stores the user's financial data (income, expenses, savings, goal) and calculated results for the duration of the demo.
 - What it does NOT do: Store anything beyond what the Must-Have features (PRD Section 6) require. No committee/BC data, no future-idea data, unless an optional feature is actually built.
 
-### Qwen / Alibaba Cloud Integration
+### Gemini Integration
 - What it does: Generates natural-language explanations and Copilot answers from the context it is given.
 - What it does NOT do: Have direct access to the database, and never acts as the source of truth for the score.
 
@@ -84,13 +84,13 @@ The frontend never talks to SQLite or Qwen directly. Every request goes through 
 
 | Component | Responsibilities | Does Not Handle |
 |---|---|---|
-| Frontend | Collect input, display score/dashboard/chat/simulator, language switch | Score calculation, What-If calculation, direct DB or Qwen access |
+| Frontend | Collect input, display score/dashboard/chat/simulator, language switch | Score calculation, What-If calculation, direct DB or Gemini access |
 | FastAPI Backend | Validation, routing, orchestration, calling Score Engine / What-If Engine / AI layer | Rendering UI |
 | Score Engine | Deterministic score formula, contributing factors, improvement tips | Holding a conversation, natural-language generation |
 | What-If Engine | Recalculating savings/score/goal for a hypothetical expense change | Persisting changes unless the user applies them, AI reasoning |
-| AI Copilot / AI Integration Layer | Building context, calling Qwen, returning a localized answer | Deciding or overriding the score, editing financial data |
+| AI Copilot / AI Integration Layer | Building context, calling Gemini, returning a localized answer | Deciding or overriding the score, editing financial data |
 | SQLite Database | Storing financial data, goal, and calculated results | Business logic, formatting, translation |
-| Qwen (Alibaba Cloud) | Natural-language explanation and Q&A generation | Score calculation, data storage, direct data access |
+| Gemini | Natural-language explanation and Q&A generation | Score calculation, data storage, direct data access |
 
 ---
 
@@ -101,7 +101,7 @@ Keep the FastAPI backend in a small number of clear layers — no unnecessary ab
 - **API / routes** — defines endpoints, receives requests, returns responses. Thin; delegates all logic downward.
 - **Schemas / validation** — Pydantic models describing request/response shapes (financial data, score result, simulator result, Copilot message). Ensures bad input is rejected early.
 - **Services / business logic** — the Score Engine and What-If Engine live here as plain Python functions/classes. This is where the "brain" of the app lives, and it is fully independent of the AI layer so it can be tested on its own.
-- **AI integration** — a small dedicated module that builds the context object (from the database, via the services layer) and calls Qwen. Kept separate from the Score/What-If services so AI failures never affect deterministic calculations.
+- **AI integration** — a small dedicated module that builds the context object (from the database, via the services layer) and calls Gemini. Kept separate from the Score/What-If services so AI failures never affect deterministic calculations.
 - **Database / models** — SQLite access, via a simple ORM (e.g. SQLModel/SQLAlchemy) or plain `sqlite3`, whichever the team is fastest with. One place responsible for reading/writing data.
 
 No additional layers (no microservices, no message queues, no separate scoring service) are needed for this MVP.
@@ -110,10 +110,10 @@ No additional layers (no microservices, no message queues, no separate scoring s
 
 ## 7. Financial Health Score Architecture
 
-- The score is **deterministic and formula/rule based** — never produced by an ML model or by Qwen.
+- The score is **deterministic and formula/rule based** — never produced by an ML model or by Gemini.
 - **Inputs**: income, expenses (by category), savings, and the user's financial goal.
 - The **backend Score Engine** calculates the score, the contributing factors, and which factors are dragging the score down.
-- **AI (Qwen)** is only used afterward, to turn the calculated factors into a plain-language explanation and 1–2 improvement suggestions — it explains the result, it does not decide it.
+- **AI (Gemini)** is only used afterward, to turn the calculated factors into a plain-language explanation and 1–2 improvement suggestions — it explains the result, it does not decide it.
 - **Finalized scoring formula** (0–100 total):
 
   | Component | Max Points | Calculation | Source |
@@ -177,7 +177,7 @@ User financial context
  income, expenses, savings, goal, latest score)
      |
      v
-    Qwen
+Gemini
      |
      v
   Response
@@ -186,9 +186,9 @@ User financial context
   Frontend
 ```
 
-- The **backend** — not the frontend, and not Qwen — decides exactly which financial fields are included as context for a given question. Only what's needed to answer well is sent.
-- The backend also tells Qwen which language (Urdu or English) to respond in.
-- Qwen's response is returned to the backend, then passed to the frontend for display.
+- The **backend** — not the frontend, and not Gemini — decides exactly which financial fields are included as context for a given question. Only what's needed to answer well is sent.
+- The backend also tells Gemini which language (Urdu or English) to respond in.
+- Gemini's response is returned to the backend, then passed to the frontend for display.
 - The AI Copilot can **never** write to the database or change financial records — it is read-context-in, text-out only.
 
 ---
@@ -215,7 +215,7 @@ The detailed schema (table names, fields, relationships) is intentionally **not*
 3. Backend calculates the Financial Health Score using the Score Engine.
 4. Frontend displays the score and its explanation.
 5. User asks the Copilot a question.
-6. Backend assembles relevant financial context and sends it, with the question, to Qwen.
+6. Backend assembles relevant financial context and sends it, with the question, to Gemini.
 7. Copilot responds in the selected language.
 8. User changes an expense in the What-If Simulator.
 9. Backend recalculates the new outcome using the same Score Engine logic.
@@ -227,8 +227,8 @@ The detailed schema (table names, fields, relationships) is intentionally **not*
 
 - The user picks Urdu or English at the start; this choice is passed with every request (or stored for the session).
 - **UI text**: a simple key-based translation dictionary (English and Urdu strings per label) is enough — no complex i18n framework is needed for two languages.
-- **AI responses**: the backend tells Qwen which language to answer in as part of the prompt/context, so the Copilot's actual answer — not just static labels — is generated in the selected language.
-- This keeps language support practical: one small translation file for the UI, and one instruction to Qwen for the Copilot.
+- **AI responses**: the backend tells Gemini which language to answer in as part of the prompt/context, so the Copilot's actual answer — not just static labels — is generated in the selected language.
+- This keeps language support practical: one small translation file for the UI, and one instruction to Gemini for the Copilot.
 
 ---
 
@@ -236,7 +236,7 @@ The detailed schema (table names, fields, relationships) is intentionally **not*
 
 - **Frontend ↔ Backend**: the only communication path for the frontend. The frontend calls backend endpoints for data submission, score retrieval, What-If calculations, and Copilot questions; it renders whatever the backend returns.
 - **Backend ↔ SQLite**: the backend is the only component that reads or writes the database.
-- **Backend ↔ Qwen**: the backend is the only component that talks to Qwen; it builds the context and prompt, and Qwen never talks to the frontend or database directly.
+- **Backend ↔ Gemini**: the backend is the only component that talks to Gemini; it builds the context and prompt, and Gemini never talks to the frontend or database directly.
 - Detailed endpoint definitions (paths, request/response formats) are intentionally left out of this document and will be defined in `API_CONTRACT.md`.
 
 ---
@@ -249,7 +249,7 @@ Simple, MVP-appropriate handling only:
 |---|---|
 | Invalid financial input (e.g. negative income) | Reject at validation layer, return a clear error message |
 | Missing required data (e.g. no goal set) | Prompt the user to complete it before showing the score |
-| AI service failure (Qwen unavailable/timeout) | Show a friendly fallback message; do not crash the app or block the score/simulator |
+| AI service failure (Gemini unavailable/timeout) | Show a friendly fallback message; do not crash the app or block the score/simulator |
 | Database error | Return a generic "something went wrong" message; log the error for debugging |
 | Invalid What-If value | Reject or clamp to a sensible range, and explain why |
 
@@ -262,7 +262,7 @@ No retries-with-backoff frameworks, circuit breakers, or enterprise logging pipe
 Realistic, MVP-level measures only:
 
 - Validate all user input on the backend (not just the frontend).
-- Never expose the Qwen/Alibaba Cloud API key in frontend code or client-visible responses; keep it in environment variables on the backend.
+- Never expose the Gemini API key in frontend code or client-visible responses; keep it in environment variables on the backend.
 - Send only the financial data actually needed to answer a Copilot question — not the entire database record.
 - No real financial credentials or real bank data are ever collected, since the MVP uses mock/manual data only (PRD Section 8).
 
@@ -276,7 +276,7 @@ No enterprise-grade encryption standards, audit logging, or compliance framework
 |---|---|---|---|
 | Backend / API | Python + FastAPI | Routing, validation, business logic, orchestration | Confirmed |
 | Database | SQLite | Stores financial data, goal, and score results | Confirmed |
-| AI | Qwen (Alibaba Cloud) | Powers Copilot answers and score explanations | Confirmed |
+| AI | Google Gemini | Powers Copilot answers and score explanations | Confirmed |
 | Frontend | Simplest practical web framework (e.g. a lightweight React/Vite app or plain HTML/JS) | Dashboard, Copilot chat, What-If Simulator UI, language switch | Team Decision |
 
 ---
@@ -299,4 +299,4 @@ The following technical complexity will **not** be built for this hackathon:
 
 ## 18. Architecture Summary
 
-In plain terms: the user interacts with a simple web frontend. That frontend always talks to one FastAPI backend, which is the "brain" of the app. The backend stores data in a small SQLite database, does all the math for the Financial Health Score and What-If Simulator itself (so the numbers are always trustworthy and consistent), and only asks the Qwen AI model to explain things in plain language or answer questions — never to decide the numbers. Everything is kept as simple as possible so a 4-person team can build it, test it, and demo it confidently within the hackathon timeline.
+In plain terms: the user interacts with a simple web frontend. That frontend always talks to one FastAPI backend, which is the "brain" of the app. The backend stores data in a small SQLite database, does all the math for the Financial Health Score and What-If Simulator itself (so the numbers are always trustworthy and consistent), and only asks the Gemini AI model to explain things in plain language or answer questions — never to decide the numbers. Everything is kept as simple as possible so a 4-person team can build it, test it, and demo it confidently within the hackathon timeline.

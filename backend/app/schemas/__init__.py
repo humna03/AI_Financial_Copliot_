@@ -1,3 +1,4 @@
+from app.schemas.dashboard import DashboardResponse, DashboardDataResponse
 from app.schemas.user import UserCreate, UserResponse, UserDataResponse
 from app.schemas.financial_data import (
     ExpenseItem,
@@ -29,6 +30,8 @@ __all__ = [
     "GoalRequest",
     "GoalResponse",
     "GoalDataResponse",
+    "DashboardResponse",
+    "DashboardDataResponse",
     "ErrorDetail",
     "ErrorResponse",
     "ScoreFactor",

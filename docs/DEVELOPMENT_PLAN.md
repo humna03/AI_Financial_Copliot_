@@ -41,7 +41,7 @@ This document tells the 4-person team what to build, in what order, who owns wha
 |---|---|---|
 | Member 1 — Backend / Data | FastAPI app, SQLModel models, SQLite setup, financial data & goal APIs, Score Engine, What-If Engine, backend validation | Working backend implementing all endpoints in `API_CONTRACT.md`, tested calculation logic |
 | Member 2 — Frontend | Dashboard, financial input forms, score display, What-If UI, Copilot chat UI, Urdu/English UI switch | A working frontend consuming every endpoint in `API_CONTRACT.md` |
-| Member 3 — AI / Copilot | Qwen/Alibaba Cloud connection, backend AI integration module, context assembly, Urdu/English prompt handling, Copilot error handling | Working `/copilot/ask` integration and AI-generated score explanations |
+| Member 3 — AI / Copilot | Gemini connection, backend AI integration module, context assembly, Urdu/English prompt handling, Copilot error handling | Working `/copilot/ask` integration and AI-generated score explanations |
 | Member 4 — Integration / Testing / General | Cross-checking API contract adherence, end-to-end testing, bug fixing, demo flow verification, documentation consistency | A verified, working end-to-end demo flow |
 
 ---
@@ -50,7 +50,7 @@ This document tells the 4-person team what to build, in what order, who owns wha
 
 ### Phase 1 — Repository and Project Setup
 - **Goal:** A running skeleton app everyone can build on.
-- **Tasks:** repository structure (backend/frontend folders, shared docs folder), FastAPI app skeleton with a health-check route, frontend project skeleton, SQLite file/connection setup, `.env` for secrets (Qwen key), branch setup (`main`, `backend`, `frontend`, `ai-copilot`).
+- **Tasks:** repository structure (backend/frontend folders, shared docs folder), FastAPI app skeleton with a health-check route, frontend project skeleton, SQLite file/connection setup, `.env` for secrets (Gemini key), branch setup (`main`, `backend`, `frontend`, `ai-copilot`).
 - **Owner:** Member 4 (setup) with Member 1 (backend skeleton) and Member 2 (frontend skeleton).
 - **Dependencies:** None — this is the starting point.
 - **Expected output:** Backend runs locally and responds on a health-check endpoint; frontend runs and loads a blank shell; SQLite file initializes without errors.
@@ -78,14 +78,14 @@ This document tells the 4-person team what to build, in what order, who owns wha
 
 ### Phase 5 — AI Copilot
 - **Goal:** The Copilot and score-explanation AI calls work end-to-end.
-- **Tasks:** Qwen/Alibaba Cloud connection and credentials via environment variables; backend AI integration module (context assembly, per `DATA_MODEL.md` Section 11); `POST /copilot/ask` implementation; AI-generated `explanation`/`suggestions` for `GET /score`; Urdu/English prompt handling; fallback behavior on AI failure (`502`, per `API_CONTRACT.md` Section 16).
+- **Tasks:** Gemini connection and credentials via environment variables; backend AI integration module (context assembly, per `DATA_MODEL.md` Section 11); `POST /copilot/ask` implementation; AI-generated `explanation`/`suggestions` for `GET /score`; Urdu/English prompt handling; fallback behavior on AI failure (`502`, per `API_CONTRACT.md` Section 16).
 - **Owner:** Member 3.
 - **Dependencies:** Needs Phase 2 (stored financial data to build context from) but does **not** need Phase 3 to be finished first for the Copilot itself — only the score-explanation part needs the Score Engine (Phase 3) to exist. Can run in parallel with Phase 4.
 - **Expected output:** Copilot answers real questions using real financial context, in both languages; score explanations are AI-phrased but backend-calculated.
 
 ### Phase 6 — Integration
-- **Goal:** Frontend, backend, database, financial logic, and Qwen all work together as one system.
-- **Tasks:** replace frontend mock data with real API calls for every endpoint in `API_CONTRACT.md`; verify every request/response shape matches the contract exactly; verify the full flow: Frontend ↔ FastAPI ↔ SQLite ↔ Financial Logic ↔ Qwen.
+- **Goal:** Frontend, backend, database, financial logic, and Gemini all work together as one system.
+- **Tasks:** replace frontend mock data with real API calls for every endpoint in `API_CONTRACT.md`; verify every request/response shape matches the contract exactly; verify the full flow: Frontend ↔ FastAPI ↔ SQLite ↔ Financial Logic ↔ Gemini.
 - **Owner:** Member 4, with Members 1–3 fixing issues found in their areas.
 - **Dependencies:** Phases 2–5 substantially complete for at least the Must-Have flow.
 - **Expected output:** The full demo flow (Section "Final Demo Flow" below) runs without manual data patching.
@@ -113,8 +113,8 @@ This document tells the 4-person team what to build, in what order, who owns wha
 | Backend skeleton + health check | Member 1 | Phase 1 setup | Frontend skeleton, AI credential setup |
 | Frontend skeleton + screens (mock data) | Member 2 | Phase 1 setup | Backend Foundation, Financial Logic, AI integration |
 | Financial data & goal APIs (Phase 2) | Member 1 | Backend skeleton | Frontend Foundation (Phase 4) |
-| Score Engine & What-If Engine (Phase 3) | Member 1 | Phase 2 | Frontend Foundation, Qwen connection setup |
-| Qwen connection + AI integration module (Phase 5) | Member 3 | Financial data storage exists (Phase 2) | Frontend Foundation, Financial Logic (Phase 3) |
+| Score Engine & What-If Engine (Phase 3) | Member 1 | Phase 2 | Frontend Foundation, Gemini connection setup |
+| Gemini connection + AI integration module (Phase 5) | Member 3 | Financial data storage exists (Phase 2) | Frontend Foundation, Financial Logic (Phase 3) |
 | Score-explanation AI wiring | Member 3 | Score Engine exists (Phase 3) | Frontend polish |
 | Frontend → real API swap (Phase 6) | Member 2 + Member 4 | Relevant backend endpoint is working | Other endpoints' integration (can be done incrementally, one endpoint at a time) |
 | Testing per component | All members | As soon as their own component works | Other members' testing |
@@ -158,7 +158,7 @@ Frontend Foundation (Phase 4) and early AI credential setup can start immediatel
 | Financial Data Input | MUST | Every other feature depends on stored income/expenses |
 | Financial Health Score | MUST | Core product value per PRD USP |
 | What-If Simulator | MUST | PRD's core "wow" demo moment |
-| AI Copilot | MUST | Core product differentiator, required by hackathon track (Qwen) |
+| AI Copilot | MUST | Core product differentiator, required by hackathon track (Gemini) |
 | Financial Goals | MUST | Needed by Dashboard, Score context, and What-If goal-progress output |
 | Urdu + English | MUST | Explicit PRD requirement for both UI and AI responses |
 | Simple Dashboard | MUST | The demo's single-screen overview |
@@ -243,7 +243,7 @@ Each step should be verified before moving to the next, but steps 3–8 can be i
 | Financial Health Score | Same input always produces the same score (deterministic); factors match the input data |
 | What-If Simulator | Simulated results are correct and stored data is unchanged after a simulation call |
 | API endpoints | Each endpoint in `API_CONTRACT.md` returns the documented response shape and status codes |
-| AI Copilot | Answers reflect the actual financial context; a Qwen failure returns a graceful fallback, not a crash |
+| AI Copilot | Answers reflect the actual financial context; a Gemini failure returns a graceful fallback, not a crash |
 | Urdu/English | UI labels and AI-generated text both switch correctly for both languages |
 | Frontend/backend integration | Every frontend screen works against the real backend, not just mock data |
 | Complete user flow | The full flow in PRD Section 9 completes without errors |
@@ -275,7 +275,7 @@ Code existing without meeting these checks does not count as "MVP complete."
 
 | Risk | Mitigation |
 |---|---|
-| Qwen/AI API failure or slow response during the demo | Implement the `502` fallback response early (Phase 5); rehearse the demo with the fallback path tested |
+| Gemini/AI API failure or slow response during the demo | Implement the `502` fallback response early (Phase 5); rehearse the demo with the fallback path tested |
 | Unclear or drifting API contract | Treat `API_CONTRACT.md` as fixed; any change requires a quick team sync before either side implements around it |
 | Scope expansion ("just one more feature") | Any new idea goes to the Optional list (Section 8) and is only touched after the Must-Have checklist (Section 14) is fully met |
 | Team members editing the same files | Keep to assigned branches (Section 11); merge small and often to `main` |

@@ -12,7 +12,7 @@ This file contains instructions for AI coding agents (e.g. OpenCode) working in 
 
 Core MVP features: Financial Data Input, Financial Health Score, AI Copilot, What-If Simulator, Urdu + English support, Dashboard, and Financial Goals.
 
-Confirmed stack: Python, FastAPI, Pydantic, SQLModel, SQLite, and Qwen (via Alibaba Cloud) for AI. Development is AI-assisted ("vibe coding") using OpenCode, done in small, reviewable tasks across a 4-person team.
+Confirmed stack: Python, FastAPI, Pydantic, SQLModel, SQLite, and Google Gemini for AI. Development is AI-assisted ("vibe coding") using OpenCode, done in small, reviewable tasks across a 4-person team.
 
 ---
 
@@ -160,7 +160,7 @@ Do not invent additional layers (no new services, queues, or microservices). Kee
 ## 13. AI Copilot Rules
 
 ```
-Frontend → FastAPI Backend → Financial Context → Qwen → FastAPI Backend → Frontend
+Frontend → FastAPI Backend → Financial Context → Gemini → FastAPI Backend → Frontend
 ```
 
 The agent MUST:
@@ -173,7 +173,7 @@ The agent MUST:
 - Prevent AI from becoming the authoritative source for deterministic calculations.
 
 The agent MUST NOT:
-- Let the frontend call Qwen directly.
+- Let the frontend call Gemini directly.
 - Let AI modify database records directly.
 - Use AI to calculate the authoritative Financial Health Score.
 - Add RAG, fine-tuning, or autonomous agent systems unless explicitly required.
@@ -373,7 +373,7 @@ Keep it short — no long explanations.
 - Do not add unnecessary features.
 - Do not rewrite unrelated code.
 - Do not expose secrets or hard-code API keys.
-- Do not let the frontend call Qwen directly.
+- Do not let the frontend call Gemini directly.
 - Do not let AI control the authoritative Financial Health Score.
 - Do not overwrite real financial data during a What-If simulation.
 - Do not change API contracts casually.

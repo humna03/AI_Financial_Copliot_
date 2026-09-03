@@ -10,7 +10,7 @@ from app.config import settings
 from app.database import create_db_and_tables
 from app.routes import health_router, score_router, simulate_router, financial_data_router, dashboard_router, copilot_router
 from app.auth import router as auth_router
-app.include_router(auth_router)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Iterator[None]:
@@ -64,7 +64,7 @@ app.include_router(simulate_router, prefix="/api")
 app.include_router(financial_data_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(copilot_router, prefix="/api")
-
+app.include_router(auth_router)
 
 @app.get("/")
 def root():

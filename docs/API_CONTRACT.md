@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-This document defines the exact communication contract between the frontend, the FastAPI backend, and the AI (Qwen) integration for the AI Financial Copilot MVP. It exists so the frontend and backend developers on the team can work independently, and so AI coding agents (e.g. OpenCode) have one unambiguous reference for request/response shapes. It is based only on the finalized `PRD.md`, `ARCHITECTURE.md`, and `DATA_MODEL.md`.
+This document defines the exact communication contract between the frontend, the FastAPI backend, and the AI (Gemini) integration for the AI Financial Copilot MVP. It exists so the frontend and backend developers on the team can work independently, and so AI coding agents (e.g. OpenCode) have one unambiguous reference for request/response shapes. It is based only on the finalized `PRD.md`, `ARCHITECTURE.md`, and `DATA_MODEL.md`.
 
 ---
 
@@ -10,8 +10,8 @@ This document defines the exact communication contract between the frontend, the
 
 - Small number of endpoints — one per clear responsibility.
 - Simple, flat request/response bodies — no deep nesting unless genuinely needed.
-- The backend is the only source of truth for the Financial Health Score and What-If results; Qwen never calculates them.
-- The frontend never calls Qwen directly — every AI call goes through the backend.
+- The backend is the only source of truth for the Financial Health Score and What-If results; Gemini never calculates them.
+- The frontend never calls Gemini directly — every AI call goes through the backend.
 - No endpoint permanently changes stored data as a side effect of a "what-if" or "explain" action.
 - Practical for a 4-person hackathon team and for AI coding agents to implement quickly.
 
@@ -136,7 +136,7 @@ None (read-only).
 `GET /api/users/{user_id}/score`
 
 #### Purpose
-Returns the user's current Financial Health Score, the contributing factors, and improvement suggestions. The backend's deterministic Score Engine (`ARCHITECTURE.md` Section 7) calculates the score from the stored Financial Profile and Expenses; Qwen is only used to phrase the explanation and suggestions in plain language, in the user's selected language.
+Returns the user's current Financial Health Score, the contributing factors, and improvement suggestions. The backend's deterministic Score Engine (`ARCHITECTURE.md` Section 7) calculates the score from the stored Financial Profile and Expenses; Gemini is only used to phrase the explanation and suggestions in plain language, in the user's selected language.
 
 #### Request
 No body. Requires that financial data (Section 6.1) has already been submitted.
@@ -164,7 +164,7 @@ No body. Requires that financial data (Section 6.1) has already been submitted.
 `200 OK`
 
 #### Error Statuses
-`404 Not Found` (no financial data submitted yet), `500 Internal Server Error` (calculation failure), `502 Bad Gateway` (Qwen unavailable — score and factors are still returned; only the phrased explanation/suggestions may fall back to a simple default, per `ARCHITECTURE.md` Section 14)
+`404 Not Found` (no financial data submitted yet), `500 Internal Server Error` (calculation failure), `502 Bad Gateway` (Gemini unavailable — score and factors are still returned; only the phrased explanation/suggestions may fall back to a simple default, per `ARCHITECTURE.md` Section 14)
 
 #### Notes
 - **Finalized scoring formula** (0–100): Savings Rate (40 pts), Expense Control (35 pts), Goal Progress (25 pts). See `ARCHITECTURE.md` Section 7 for exact thresholds and scoring rules.
@@ -316,7 +316,7 @@ FastAPI Backend
 Retrieve relevant user financial context (from SQLite)
    |
    v
-Qwen / Alibaba Cloud
+Gemini
    |
    v
 Backend
@@ -335,7 +335,7 @@ What the frontend sends:
 The frontend does **not** send financial data — the backend retrieves it from SQLite itself, ensuring the AI never receives more than the backend decides to share.
 
 ### Backend Context
-What the backend may include when calling Qwen (assembled server-side, per `DATA_MODEL.md` Section 11):
+What the backend may include when calling Gemini (assembled server-side, per `DATA_MODEL.md` Section 11):
 - `monthly_income`, `monthly_savings`
 - relevant expense categories/amounts
 - goal `target_amount` and calculated `progress_percent`
@@ -356,17 +356,17 @@ What the backend returns to the frontend:
 ```
 
 ### Language
-The backend passes the user's stored `language` preference (from the User entity) to Qwen as part of the prompt, so `answer` is generated directly in English or Urdu — no separate translation step or duplicate endpoint per language.
+The backend passes the user's stored `language` preference (from the User entity) to Gemini as part of the prompt, so `answer` is generated directly in English or Urdu — no separate translation step or duplicate endpoint per language.
 
 ### Success Status
 `200 OK`
 
 ### Error Statuses
-`400 Bad Request` (empty question), `404 Not Found` (no financial data yet, so no context exists), `502 Bad Gateway` (Qwen unavailable — return a friendly fallback message per `ARCHITECTURE.md` Section 14)
+`400 Bad Request` (empty question), `404 Not Found` (no financial data yet, so no context exists), `502 Bad Gateway` (Gemini unavailable — return a friendly fallback message per `ARCHITECTURE.md` Section 14)
 
 ### Rules
-- The frontend must never call Qwen directly; this endpoint is the only path.
-- The Qwen API key stays on the backend and is never exposed in requests or responses.
+- The frontend must never call Gemini directly; this endpoint is the only path.
+- The Gemini API key stays on the backend and is never exposed in requests or responses.
 - The AI Copilot cannot create, update, or delete any financial record — this endpoint is read-context-in, text-out only.
 - The AI does not calculate or return a `score` value here — score always comes from `GET /api/users/{user_id}/score`.
 
@@ -419,7 +419,7 @@ This reuses the same underlying data as Sections 6, 7, and 9 — it does not int
 
 - Language (`"en"` or `"ur"`) is set once, when the demo user is created (`POST /api/users`), and stored on the User entity per `DATA_MODEL.md` Section 12.
 - No endpoint is duplicated per language — the same endpoints serve both languages.
-- Any endpoint that returns natural-language text generated by Qwen (currently: the score `explanation`/`suggestions` in Section 7, and the Copilot `answer` in Section 10) uses the user's stored language automatically.
+- Any endpoint that returns natural-language text generated by Gemini (currently: the score `explanation`/`suggestions` in Section 7, and the Copilot `answer` in Section 10) uses the user's stored language automatically.
 - UI label translation (button text, headings, etc.) is handled entirely on the frontend via a simple dictionary, per `ARCHITECTURE.md` Section 12 — it is not part of this API.
 
 ---
@@ -457,7 +457,7 @@ Every endpoint in this contract uses one of these two shapes — no endpoint-spe
 | 404 | Not Found | Unknown user_id, or requested resource doesn't exist yet (e.g. no financial data submitted) |
 | 422 | Unprocessable Entity | Body is well-formed but fails validation rules (e.g. negative amount) |
 | 500 | Internal Server Error | Unexpected backend/database failure |
-| 502 | Bad Gateway | Qwen (AI service) call failed or timed out |
+| 502 | Bad Gateway | Gemini (AI service) call failed or timed out |
 
 No other status codes are used — this keeps error handling predictable for the frontend.
 
@@ -484,16 +484,16 @@ Based on `DATA_MODEL.md` Section 13:
 | Missing required data (e.g. score requested before financial data exists) | `404` with a message telling the user what to submit first |
 | Resource not found (unknown user_id) | `404` |
 | Database failure | `500`, generic message, error logged server-side |
-| AI service failure (Qwen timeout/unavailable) | `502` for the Copilot endpoint; for the Score endpoint, still return the calculated score with a simple default explanation instead of failing the whole request |
+| AI service failure (Gemini timeout/unavailable) | `502` for the Copilot endpoint; for the Score endpoint, still return the calculated score with a simple default explanation instead of failing the whole request |
 | Invalid simulation input | `400` or `422`, depending on whether the body is malformed or just fails a rule |
 
 ---
 
 ## 17. Security Rules
 
-- The Qwen/Alibaba Cloud API key is stored in a backend environment variable and never appears in any request or response.
+- The Gemini API key is stored in a backend environment variable and never appears in any request or response.
 - All incoming data is validated server-side (Section 15), not just on the frontend.
-- The Copilot endpoint sends Qwen only the specific context fields needed to answer the question (Section 10) — never the full financial record.
+- The Copilot endpoint sends Gemini only the specific context fields needed to answer the question (Section 10) — never the full financial record.
 - No endpoint allows the AI response to write back to the database; only the endpoints in Sections 6 and 9 (both driven by explicit user action) can change stored financial data.
 - No real financial credentials (bank logins, card numbers) are ever accepted by any endpoint, since none are part of the data model.
 
@@ -530,7 +530,7 @@ Financial Context
  language — assembled server-side)
    |
    v
-Qwen
+Gemini
    |
    v
 FastAPI
@@ -539,9 +539,9 @@ FastAPI
 Frontend
 ```
 
-- **Backend sends to Qwen:** the user's question (Copilot) or the calculated score/factors (Score explanation), plus only the financial context fields relevant to that request, plus the target language.
+- **Backend sends to Gemini:** the user's question (Copilot) or the calculated score/factors (Score explanation), plus only the financial context fields relevant to that request, plus the target language.
 - **Backend expects back:** plain natural-language text (an answer, or an explanation + suggestions) — never a numeric score, and never a financial data mutation.
-- Qwen has no database access and no ability to call other backend endpoints; it only receives what the backend sends in the prompt and returns text.
+- Gemini has no database access and no ability to call other backend endpoints; it only receives what the backend sends in the prompt and returns text.
 
 ---
 

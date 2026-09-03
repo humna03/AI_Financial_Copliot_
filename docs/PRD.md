@@ -170,7 +170,7 @@ AI is used in exactly two places, both chosen because they add real value:
 
 | Where | How |
 |---|---|
-| **AI Copilot** | Uses Qwen (via Alibaba Cloud, per hackathon track requirements) with the user's financial data passed in as context, so answers are personal and grounded in real numbers |
+| **AI Copilot** | Uses Google Gemini with the user's financial data passed in as context, so answers are personal and grounded in real numbers |
 | **Financial Health Score explanations** | The score itself comes from a transparent formula (not an ML model, since we don't have labelled training data); AI is used to turn the calculated factors into a simple, readable explanation and suggestions |
 
 We are **not** claiming AI/ML where a simple formula does the job. The backend always calculates the score and the What-If results; AI is never used to decide or override them. This keeps the score explainable and trustworthy for the demo.
@@ -197,7 +197,7 @@ Additional data (e.g. committee payment history) is only collected if an optiona
 |---|---|---|---|
 | Backend / API | Python + FastAPI | Connects frontend, Copilot, and scoring logic | **Confirmed** |
 | Database | SQLite | Stores user financial data, score results, and goal data for the demo | **Confirmed** — used instead of a more complex database system |
-| AI Copilot | Qwen (Alibaba Cloud) | Powers the contextual chat responses | **Confirmed** — required by hackathon track |
+| AI Copilot | Google Gemini | Powers the contextual chat responses | **Confirmed** — required by hackathon track |
 | Frontend | Simplest practical web framework based on team familiarity | Dashboard, Copilot chat UI, What-If Simulator UI, language switch | **Team decision** — to be chosen before development starts; kept deliberately simple |
 
 We are keeping the architecture simple and only listing tools we actually plan to use — no infrastructure is added just to look impressive. Detailed technical structure is defined separately in `ARCHITECTURE.md`.
@@ -211,7 +211,7 @@ We are a team of 4. Suggested primary ownership (not rigid — everyone can help
 | Role | Primary Focus |
 |---|---|
 | Backend / Data | Data input, Financial Health Score formula, SQLite schema, API |
-| AI / Copilot | Qwen integration, context design, Urdu + English handling |
+| AI / Copilot | Gemini integration, context design, Urdu + English handling |
 | Frontend / UI | Dashboard, What-If Simulator UI, language switch |
 | Integration / Testing / Product | Connecting the pieces, testing the full demo flow, pitch/demo prep |
 
@@ -236,7 +236,7 @@ Before development starts, the team agrees on shared data formats and API shapes
 - The What-If Simulator clearly and quickly shows its value — a judge should understand it within seconds.
 - The Copilot gives answers that clearly use the user's own financial data, in both Urdu and English.
 - The project still makes complete sense even if every optional feature (Section 7) is removed.
-- Alibaba Cloud tooling (Qwen) is used correctly and shown clearly in the pitch.
+- Google Gemini tooling is used correctly and shown clearly in the pitch.
 
 ---
 

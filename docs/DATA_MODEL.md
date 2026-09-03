@@ -161,7 +161,7 @@ Three kinds of values are involved:
 | Calculated values | goal progress, What-If results, score components | No — calculated on request |
 | Score-related values | score_value, factors_summary | Yes — in Score Result, as the one stored calculated value (for Dashboard performance) |
 
-- The Financial Health Score is **always calculated deterministically by the backend Score Engine** from raw user data. It is never calculated or modified by Qwen.
+- The Financial Health Score is **always calculated deterministically by the backend Score Engine** from raw user data. It is never calculated or modified by Gemini.
 - The **scoring formula has been finalized** by the team. It combines three components (Savings Rate 40 pts, Expense Control 35 pts, Goal Progress 25 pts = 100 max). See `ARCHITECTURE.md` Section 7 for the exact thresholds.
 - **Goal Progress calculation:** `progress_percent = (annual_savings / target_amount) × 100`, where `annual_savings = monthly_savings × 12`, capped at 100%. This is calculated on request from `monthly_savings` (Financial Profile) and `target_amount` (Goal) — no additional stored field is required for the current MVP.
 - Whenever the Financial Profile or Expenses change, the backend should recalculate the score and write a new `Score Result` row (or update the existing one) so the Dashboard always reflects current data.
@@ -191,7 +191,7 @@ Because the PRD does not require saved/named scenarios (that would be a Future I
 | | |
 |---|---|
 | **Stored in SQLite** | Financial Profile, Expenses, Goal, latest Score Result |
-| **Sent to Qwen as temporary context** | Only the specific fields relevant to the user's question — typically: income, savings, relevant expense categories, goal target/progress, and the latest score value + factors |
+| **Sent to Gemini as temporary context** | Only the specific fields relevant to the user's question — typically: income, savings, relevant expense categories, goal target/progress, and the latest score value + factors |
 
 - The backend assembles this context fresh for each Copilot request; nothing about the AI call is persisted back into SQLite as a side effect.
 - The AI Copilot **only reads** context provided by the backend — it has no direct database access and **cannot create, update, or delete** any financial record. Any advice it gives is text output only, displayed by the frontend.
@@ -203,7 +203,7 @@ Because the PRD does not require saved/named scenarios (that would be a Future I
 - Language preference (`"en"` or `"ur"`) is stored **once per user**, on the `User` entity — not duplicated onto every financial record.
 - Financial data (income, expenses, goals) is language-neutral — numbers don't need translation, only labels and Copilot text do.
 - UI labels are handled by a simple translation dictionary in the frontend (per `ARCHITECTURE.md` Section 12), not by duplicating data in the database.
-- When calling Qwen, the backend passes the user's stored language preference so the Copilot answers in the right language — no separate data model impact beyond the one `language` field.
+- When calling Gemini, the backend passes the user's stored language preference so the Copilot answers in the right language — no separate data model impact beyond the one `language` field.
 
 ---
 
@@ -235,7 +235,7 @@ This is not a full API validation spec — detailed request/response validation 
 - Never store API keys or secrets in the database (they belong in environment variables, per `ARCHITECTURE.md` Section 15).
 - Never store bank passwords, card numbers, or any real payment credentials — none are collected in the first place.
 - Only collect the financial data actually required by the four MVP features (Sections 6–9 above).
-- Only send the specific fields Qwen needs to answer a given question — never the full database record (Section 11).
+- Only send the specific fields Gemini needs to answer a given question — never the full database record (Section 11).
 
 ---
 

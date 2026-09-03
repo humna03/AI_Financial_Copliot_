@@ -1,3 +1,5 @@
+import json
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -9,6 +11,9 @@ from app.models import Expense, FinancialProfile, Goal, ScoreResult, User
 from app.schemas import ScoreDataResponse, ScoreFactor as ScoreFactorSchema, ScoreResponse
 from app.schemas.common import ErrorResponse
 from app.services.score_engine import ScoreFactor, calculate_score
+from app.services.gemini_client import gemini_client
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -43,30 +48,8 @@ def get_goal(session: Session, user_id: int) -> Optional[Goal]:
     return session.exec(select(Goal).where(Goal.user_id == user_id)).first()
 
 
-def get_latest_score(session: Session, user_id: int) -> Optional[ScoreResult]:
-    return session.exec(
-        select(ScoreResult)
-        .where(ScoreResult.user_id == user_id)
-        .order_by(ScoreResult.calculated_at.desc())
-    ).first()
-
-
-def save_score_result(session: Session, user_id: int, score_value: int, factors_summary: str) -> ScoreResult:
-    score_result = ScoreResult(
-        user_id=user_id,
-        score_value=score_value,
-        factors_summary=factors_summary,
-        calculated_at=datetime.now(timezone.utc).isoformat(),
-    )
-    session.add(score_result)
-    session.commit()
-    session.refresh(score_result)
-    return score_result
-
-
-def build_explanation_and_suggestions(score_result, profile, expenses, goal, language: str = "en"):
+def build_fallback_explanation_and_suggestions(score_result, language: str = "en"):
     negative_factors = [f for f in score_result.factors if f.impact == "negative"]
-    positive_factors = [f for f in score_result.factors if f.impact == "positive"]
 
     if language == "ur":
         if negative_factors:
@@ -110,17 +93,71 @@ def build_explanation_and_suggestions(score_result, profile, expenses, goal, lan
     return explanation, suggestions[:2]
 
 
+def generate_ai_explanation_and_suggestions(score_result, language: str = "en"):
+    """
+    Uses Gemini to explain the backend-calculated score and factors in plain language,
+    in the user's selected language (English or Urdu).
+    Per API_CONTRACT.md §7 & ARCHITECTURE.md §14, if Gemini is unavailable, falls back gracefully.
+    """
+    lang_name = "Urdu" if language == "ur" else "English"
+    factors_desc = ", ".join([f"{f.name} ({f.impact}): {f.detail}" for f in score_result.factors])
+    
+    prompt = f"""You are an AI Financial Copilot. A user's Financial Health Score has been calculated by the system score engine as {score_result.score}/100.
+Contributing factors: {factors_desc}.
+
+Instructions:
+1. Provide a clear, concise 1-sentence plain-language explanation of why the user received this score based on the factors.
+2. Provide 1-2 actionable improvement suggestions.
+3. Respond in {lang_name}.
+4. Format your response strictly as JSON with keys "explanation" (string) and "suggestions" (array of strings). Do not include any other text or markdown block outside valid JSON if possible, or parse cleanly.
+"""
+    try:
+        response_text = gemini_client.generate_content(prompt)
+        # Clean up markdown code blocks if present
+        cleaned_text = response_text.strip()
+        if cleaned_text.startswith("```json"):
+            cleaned_text = cleaned_text[7:]
+        elif cleaned_text.startswith("```"):
+            cleaned_text = cleaned_text[3:]
+        if cleaned_text.endswith("```"):
+            cleaned_text = cleaned_text[:-3]
+        cleaned_text = cleaned_text.strip()
+
+        data = json.loads(cleaned_text)
+        explanation = data.get("explanation")
+        suggestions = data.get("suggestions")
+        if explanation and isinstance(suggestions, list) and len(suggestions) > 0:
+            return explanation, suggestions[:2]
+    except Exception as e:
+        logger.warning(f"Gemini score explanation generation failed or failed to parse JSON: {e}. Falling back to default explanation.")
+
+    return build_fallback_explanation_and_suggestions(score_result, language)
+
+
+def save_score_result(session: Session, user_id: int, score_value: int, factors_summary: str) -> ScoreResult:
+    score_result = ScoreResult(
+        user_id=user_id,
+        score_value=score_value,
+        factors_summary=factors_summary,
+        calculated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(score_result)
+    session.commit()
+    session.refresh(score_result)
+    return score_result
+
+
 @router.get(
     "/users/{user_id}/score",
     response_model=ScoreDataResponse,
     responses={
         404: {"model": ErrorResponse, "description": "User or financial data not found"},
         500: {"model": ErrorResponse, "description": "Calculation failure"},
+        502: {"model": ErrorResponse, "description": "Gemini unavailable — score and factors still returned with default explanation"},
     },
 )
 def get_score(user_id: int, session: Session = Depends(get_session)):
-    get_user_or_404(session, user_id)
-
+    user = get_user_or_404(session, user_id)
     profile = get_financial_profile_or_404(session, user_id)
     expenses = get_expenses(session, user_id)
     if not expenses:
@@ -131,11 +168,18 @@ def get_score(user_id: int, session: Session = Depends(get_session)):
 
     goal = get_goal(session, user_id)
 
+    # 1. Authoritative score calculation by backend Score Engine (AI never determines score)
     score_result = calculate_score(profile, expenses, goal)
 
-    explanation, suggestions = build_explanation_and_suggestions(
-        score_result, profile, expenses, goal, language="en"
-    )
+    # 2. AI explanation generation via Gemini (with graceful fallback per API_CONTRACT.md §7 / ARCHITECTURE.md §14)
+    try:
+        explanation, suggestions = generate_ai_explanation_and_suggestions(
+            score_result, language=user.language
+        )
+    except Exception:
+        explanation, suggestions = build_fallback_explanation_and_suggestions(
+            score_result, language=user.language
+        )
 
     factors_summary = "".join([
         f'{{"name": "{f.name}", "impact": "{f.impact}"}}' for f in score_result.factors

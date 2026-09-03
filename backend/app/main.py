@@ -9,7 +9,8 @@ from fastapi.exceptions import RequestValidationError
 from app.config import settings
 from app.database import create_db_and_tables
 from app.routes import health_router, score_router, simulate_router, financial_data_router, dashboard_router, copilot_router
-
+from app.auth import router as auth_router
+app.include_router(auth_router)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Iterator[None]:

@@ -24,35 +24,42 @@ This document defines the practical technical architecture for the AI Financial 
                 User
                  |
                  v
-             Frontend
+             Frontend (React + TypeScript)
      (Dashboard, Copilot Chat,
-      What-If Simulator, Language Switch)
+      What-If Simulator, Language Switch,
+      Theme, Auth screens)
                  |
-                 v
+                 v         JWT attached per request
           FastAPI Backend
    (routes, validation, business logic)
                  |
-   -------------------------------
-   |                             |
-   v                             v
-Core Application Services     AI Integration Layer
-(Score Engine,                 (builds context,
-What-If Engine,                 calls Gemini)
- Data Handling)                     |
-   |                                v
-   v                              Gemini
-SQLite Database                (Google)
+   -----------------------------------------------
+   |                 |                            |
+   v                 v                            v
+Auth Module      Core Application Services   AI Integration Layer
+(app/auth.py:    (Score Engine,               (builds context,
+ signup/login,    What-If Engine,              detects message
+ JWT issuing,     Data Handling)                language, calls
+ get_current_user)     |                        Gemini)
+   |                   v                            |
+   v                 SQLite Database                v
+ SQLite (auth_users table,                        Gemini
+ same file)                                       (Google)
 ```
 
-The frontend never talks to SQLite or Gemini directly. Every request goes through the FastAPI backend, which decides what to calculate, what to store, and what (if anything) to send to Gemini.
+The frontend never talks to SQLite or Gemini directly. Every request goes through the FastAPI backend, which authenticates the caller, decides what to calculate, what to store, and what (if anything) to send to Gemini.
 
 ---
 
 ## 4. System Components
 
 ### Frontend
-- What it does: Collects user input, displays the Dashboard, Financial Health Score, Copilot chat, and What-If Simulator results; handles the Urdu/English language switch.
-- What it does NOT do: Calculate the score, run What-If logic, or call Gemini directly. It only calls the backend API and renders what it gets back.
+- What it does: Collects user input, displays the Dashboard, Financial Health Score, Copilot chat, and What-If Simulator results; handles the Urdu/English UI language switch, theme switching, authentication screens/session persistence, and route protection.
+- What it does NOT do: Calculate the score, run What-If logic, detect Copilot response language, or call Gemini directly. It only calls the backend API and renders what it gets back.
+
+### Authentication Module
+- What it does: Issues and validates JWTs for signup/login, hashes passwords (bcrypt), and provides the `get_current_user` dependency that every financial-data route uses to verify the caller owns the requested profile.
+- What it does NOT do: Grant access to another account's financial profile under any circumstance — a mismatched `user_id` is always rejected with `403`, even for reads.
 
 ### FastAPI Backend
 - What it does: Validates input, stores and retrieves data, runs the Score Engine and What-If Engine, builds context for the AI Copilot, and returns responses to the frontend.
@@ -187,7 +194,7 @@ Gemini
 ```
 
 - The **backend** — not the frontend, and not Gemini — decides exactly which financial fields are included as context for a given question. Only what's needed to answer well is sent.
-- The backend also tells Gemini which language (Urdu or English) to respond in.
+- The backend detects which language the user's **current message** is actually written in (English, Roman Urdu, or Urdu script) using a lightweight heuristic, independent of the account's stored UI/profile language, and instructs Gemini to reply in that detected language (see `API_CONTRACT.md` Section 10/12).
 - Gemini's response is returned to the backend, then passed to the frontend for display.
 - The AI Copilot can **never** write to the database or change financial records — it is read-context-in, text-out only.
 
@@ -225,10 +232,10 @@ The detailed schema (table names, fields, relationships) is intentionally **not*
 
 ## 12. Language Support
 
-- The user picks Urdu or English at the start; this choice is passed with every request (or stored for the session).
-- **UI text**: a simple key-based translation dictionary (English and Urdu strings per label) is enough — no complex i18n framework is needed for two languages.
-- **AI responses**: the backend tells Gemini which language to answer in as part of the prompt/context, so the Copilot's actual answer — not just static labels — is generated in the selected language.
-- This keeps language support practical: one small translation file for the UI, and one instruction to Gemini for the Copilot.
+- **UI text**: the user picks Urdu or English for the interface at any time (Settings), stored client-side and applied instantly; a simple key-based translation dictionary (English and Urdu strings per label) is enough — no complex i18n framework is needed for two languages.
+- **Account/profile language**: a separate `"en"`/`"ur"` value is set once at financial-profile creation (`POST /api/users`) and stored on the `User` entity. It is used only as (a) the default language for the Score endpoint's AI-generated explanation, and (b) the last-resort fallback for Copilot language detection when a message carries no signal of its own.
+- **AI Copilot responses**: the backend does **not** rely on the stored UI/profile language for what the Copilot replies in. Instead, it runs a lightweight heuristic language detector over the user's actual current message (and, for short/ambiguous messages, the previous turn) to classify it as English, Roman Urdu, or Urdu (Perso-Arabic) script, then instructs Gemini to reply in kind. This lets a user switch between English, Roman Urdu, and Urdu script within the same conversation and get a reply in the same language/script they just used — a scenario the "pass the selected language" model above cannot handle, since Roman Urdu is a Copilot-response-only concept, not one of the two selectable UI languages.
+- This keeps language support practical: one small translation file for the UI, and one detection step + instruction to Gemini for the Copilot.
 
 ---
 
@@ -274,10 +281,11 @@ No enterprise-grade encryption standards, audit logging, or compliance framework
 
 | Area | Technology | Purpose | Status |
 |---|---|---|---|
-| Backend / API | Python + FastAPI | Routing, validation, business logic, orchestration | Confirmed |
+| Backend / API | Python + FastAPI, Pydantic, SQLModel | Routing, validation, business logic, orchestration | Confirmed |
 | Database | SQLite | Stores financial data, goal, and score results | Confirmed |
-| AI | Google Gemini | Powers Copilot answers and score explanations | Confirmed |
-| Frontend | Simplest practical web framework (e.g. a lightweight React/Vite app or plain HTML/JS) | Dashboard, Copilot chat, What-If Simulator UI, language switch | Team Decision |
+| Authentication | JWT (python-jose) + bcrypt (passlib) | Signup/login, session tokens, password hashing | Confirmed |
+| AI | Google Gemini (`google-genai` SDK) | Powers Copilot answers and score explanations | Confirmed |
+| Frontend | React 19 + TypeScript, Vite, React Router, Redux Toolkit, Tailwind CSS, Recharts, Axios | Dashboard, Copilot chat, What-If Simulator UI, auth screens, theme + language switch | Confirmed |
 
 ---
 

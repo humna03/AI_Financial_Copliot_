@@ -48,7 +48,6 @@ def test_basic_score_calculation():
         assert f.impact in ("positive", "negative"), f"Invalid impact: {f.impact}"
 
     print("\n[PASS] Basic score calculation test passed!")
-    return result
 
 
 def test_zero_income():

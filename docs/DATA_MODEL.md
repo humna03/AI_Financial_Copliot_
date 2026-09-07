@@ -20,49 +20,67 @@ This document defines the minimum data model needed to implement the AI Financia
 
 ## 3. Data Entities
 
+**This section has been superseded in part by the real authentication system added after the original MVP design (see `AuthUser` below and the note that follows this table). The rest of the table remains accurate.**
+
 | Entity | Purpose | Required for MVP |
 |---|---|---|
-| User (Demo Session) | Identifies whose financial data a given record belongs to, so data isn't mixed between demo users | Yes |
-| Financial Profile | Holds the user's income, savings, and language preference | Yes |
+| AuthUser (`auth_users` table) | Real login account: full name, email, bcrypt-hashed password. Owns zero or one Financial Profile | Yes (added post-MVP) |
+| User (Financial Profile owner, `users` table) | Identifies whose financial data a given record belongs to; now linked to exactly one `AuthUser` via `auth_user_id` | Yes |
+| Financial Profile | Holds the user's income and savings | Yes |
 | Expense | Holds one expense line (category + amount) belonging to a user | Yes |
 | Goal | Holds the user's one financial goal (e.g. savings target) | Yes |
 | Score Result | Holds the most recently calculated Financial Health Score, so the Dashboard can load it without recalculating every time | Yes |
 
 No other entities (e.g. committee/BC data, transactions, notifications) are included — they belong to Optional/Future features that are not part of this build.
 
-**Note on "User":** PRD Section 8 excludes complex authentication. "User" here does not mean a login system — it is the simplest possible identifier (e.g. a generated demo user/session ID) used only to group one person's financial data together in SQLite. No password or credential fields exist on this entity.
+**Note on "User" (updated):** PRD Section 8's original exclusion of complex authentication described the *initial* hackathon design. A real authentication system was added afterward (see `app/auth.py`): a separate `auth_users` table stores `full_name`, `email` (unique), and a bcrypt-hashed password, and issues JWTs on login. The financial-profile `User` entity (`users` table) is distinct from `AuthUser` — it still holds only financial-profile data (`language`, timestamps) — but now carries a nullable `auth_user_id` column, uniquely indexed so at most one financial profile can belong to any given login account. A `User` row with `auth_user_id = NULL` has no verified owner and is denied by every ownership check; this only occurs for rows created before the auth system existed. No password or credential fields exist on the `User` (financial profile) entity itself — those live only on `AuthUser`.
 
 ---
 
 ## 4. Entity Relationships
 
 ```
-User
+AuthUser (auth_users table — login account)
  |
- +--- Financial Profile   (one per user: income, savings, language)
- |
- +--- Expenses            (many per user: category + amount)
- |
- +--- Goal                (one per user: target amount, description)
- |
- +--- Score Result         (latest calculated score for that user)
+ +--- User (financial profile owner, at most one, via users.auth_user_id)
+       |
+       +--- Financial Profile   (one per user: income, savings)
+       |
+       +--- Expenses            (many per user: category + amount)
+       |
+       +--- Goal                (one per user: target amount, description)
+       |
+       +--- Score Result         (latest calculated score for that user)
 ```
 
-Each Expense, the Financial Profile, the Goal, and the Score Result all belong to exactly one User. There are no other relationships in this MVP (e.g. no relationships between expenses, no shared/multi-user data).
+Each Expense, the Financial Profile, the Goal, and the Score Result all belong to exactly one `User`. Each `User` belongs to at most one `AuthUser` (enforced by a partial unique index on `users.auth_user_id`, so `NULL` — an unowned/legacy row — is never treated as a collision). There are no other relationships in this MVP (e.g. no relationships between expenses, no shared/multi-user data, no user owning more than one financial profile).
 
 ---
 
 ## 5. Detailed Entity Definitions
 
-### 5.1 User
+### 5.0 AuthUser (`auth_users` table)
 
 | Field | Type | Required? | Description |
 |---|---|---|---|
-| id | INTEGER (PK) | Required | Unique identifier for the demo user/session |
-| created_at | TEXT (ISO datetime) | Required | When this demo user record was created |
-| language | TEXT ("en" or "ur") | Required | Selected language; stored here since it applies to everything the user sees (see Section 12) |
+| id | INTEGER (PK) | Required | Unique identifier for the login account |
+| full_name | TEXT | Required | Account holder's name |
+| email | TEXT (unique, indexed) | Required | Login email — enforced unique at the database level |
+| hashed_password | TEXT | Required | Bcrypt hash of the account's password; the plaintext password is never stored |
+| created_at | TEXT (ISO datetime) | Required | When the account was created |
 
-*Stored value.* No calculated fields.
+*Stored values only.* Lives in a table managed independently by `app/auth.py` (see that module's docstring for why), in the same SQLite database file as everything else in this document.
+
+### 5.1 User (Financial Profile owner, `users` table)
+
+| Field | Type | Required? | Description |
+|---|---|---|---|
+| id | INTEGER (PK) | Required | Unique identifier for the financial profile |
+| created_at | TEXT (ISO datetime) | Required | When this financial-profile record was created |
+| language | TEXT ("en" or "ur") | Required | Language selected when the profile was created; used as the default for the Score endpoint's AI explanation and as a last-resort fallback for Copilot language detection (see Section 12) |
+| auth_user_id | INTEGER (FK → AuthUser, nullable, uniquely indexed) | Optional | The login account that owns this financial profile. `NULL` means no verified owner (only possible for rows predating the auth system); a non-NULL value must be unique across all `User` rows, so one account can own at most one financial profile |
+
+*Stored values.* No calculated fields.
 
 ### 5.2 Financial Profile
 
@@ -200,10 +218,10 @@ Because the PRD does not require saved/named scenarios (that would be a Future I
 
 ## 12. Language Data
 
-- Language preference (`"en"` or `"ur"`) is stored **once per user**, on the `User` entity — not duplicated onto every financial record.
+- Profile language preference (`"en"` or `"ur"`) is stored **once per user**, on the `User` entity — not duplicated onto every financial record.
 - Financial data (income, expenses, goals) is language-neutral — numbers don't need translation, only labels and Copilot text do.
 - UI labels are handled by a simple translation dictionary in the frontend (per `ARCHITECTURE.md` Section 12), not by duplicating data in the database.
-- When calling Gemini, the backend passes the user's stored language preference so the Copilot answers in the right language — no separate data model impact beyond the one `language` field.
+- **The stored `language` field is not what determines the Copilot's reply language.** The backend detects the Copilot's reply language (`"en"`, `"roman-ur"`, or `"ur"`) fresh, per message, from the actual text of the user's current question (and, for short/ambiguous messages, the previous conversation turn) — see `app/services/language_detect.py`. The stored `User.language` field is used only as (a) the default language for the Score endpoint's AI explanation, and (b) the last-resort fallback when a Copilot message has no detectable language signal of its own. Roman Urdu (`"roman-ur"`) is never stored anywhere — it exists only as a per-message Copilot-response classification, not as a value of the stored `language` field.
 
 ---
 
@@ -222,20 +240,20 @@ This is not a full API validation spec — detailed request/response validation 
 
 ## 14. Database Design
 
-- **Database:** SQLite (confirmed, per PRD Section 12 / Architecture Section 10).
-- **Access layer:** SQLModel (or plain SQLAlchemy/`sqlite3`) is sufficient — five small tables (User, Financial Profile, Expense, Goal, Score Result), each with a simple foreign key back to User.
-- **No** PostgreSQL, MongoDB, Redis, caching layers, or data warehouses are needed — the entire dataset for a demo user is tiny and fits comfortably in SQLite.
-- **No** migrations tooling is required for the hackathon; a single schema creation step at app startup is enough.
-- Table/column design (exact SQLModel classes, indexes, migrations) is intentionally left for implementation, not this document.
+- **Database:** SQLite (confirmed, per PRD Section 12 / Architecture Section 10), one file shared by both the financial-data tables and the `auth_users` table.
+- **Access layer:** SQLModel for the financial-data tables (`users`, `financial_profiles`, `expenses`, `goals`, `score_results`), each with a simple foreign key back to `users`. `app/auth.py` uses a separate, self-contained SQLAlchemy engine/session for `auth_users`, bound to the same database file, so the auth module can be added/removed without touching the financial-data models.
+- **No** PostgreSQL, MongoDB, Redis, caching layers, or data warehouses are needed — the entire dataset for one user is tiny and fits comfortably in SQLite.
+- **Migrations:** no external migrations framework (e.g. Alembic) is used. Instead, `create_db_and_tables()` (`app/database.py`) runs additive, idempotent steps at startup: create any missing tables, add the `auth_user_id` column to `users` if it's missing (for databases created before the auth system existed), deduplicate any pre-existing multiple-profiles-per-account rows, then create the partial unique index on `auth_user_id`. This keeps a single schema-creation step sufficient even across the auth system being added after the original tables existed.
+- Table/column design (exact SQLModel classes, indexes) beyond what's described in Section 5 is left to the source code.
 
 ---
 
 ## 15. Data Privacy
 
 - Never store API keys or secrets in the database (they belong in environment variables, per `ARCHITECTURE.md` Section 15).
-- Never store bank passwords, card numbers, or any real payment credentials — none are collected in the first place.
-- Only collect the financial data actually required by the four MVP features (Sections 6–9 above).
-- Only send the specific fields Gemini needs to answer a given question — never the full database record (Section 11).
+- Never store bank passwords, card numbers, or any real payment credentials — none are collected in the first place. The only password-like value stored anywhere is the bcrypt **hash** of a login account's password (`auth_users.hashed_password`); the plaintext password itself is never persisted.
+- Only collect the financial data actually required by the four MVP features (Sections 6–9 above), plus the login credentials required for real authentication (Section 3).
+- Only send the specific fields Gemini needs to answer a given question — never the full database record (Section 11), and never any `AuthUser` field (email, password hash) at all.
 
 ---
 
@@ -243,7 +261,8 @@ This is not a full API validation spec — detailed request/response validation 
 
 | Entity | Why We Need It | MVP Priority |
 |---|---|---|
-| User | Groups one person's data together; carries language preference | Essential |
+| AuthUser | Real login account (email + hashed password); owns a financial profile | Essential (added post-MVP) |
+| User | Groups one person's financial data together; carries profile language preference and links to its owning AuthUser | Essential |
 | Financial Profile | Income and savings — needed by Score Engine, Simulator, Copilot | Essential |
 | Expense | Category spending — needed by Score Engine, Simulator, Copilot | Essential |
 | Goal | Powers goal progress on Dashboard and in What-If Simulator | Essential |

@@ -1,7 +1,14 @@
 from contextlib import asynccontextmanager
 from typing import Iterator
 
+# Load .env before any module-level `os.getenv(...)` calls run (notably in app.auth),
+# so DATABASE_URL is consistent across the whole app instead of app.auth silently
+# defaulting to a different SQLite file than everything else.
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from fastapi.exceptions import RequestValidationError
@@ -9,6 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from app.config import settings
 from app.database import create_db_and_tables
 from app.routes import health_router, score_router, simulate_router, financial_data_router, dashboard_router, copilot_router
+from app.auth import router as auth_router
 
 
 @asynccontextmanager
@@ -22,6 +30,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS: only the configured frontend origin(s) may call this API — no wildcard.
+# Set FRONTEND_URL in .env (comma-separated for multiple origins) to the real
+# frontend origin(s) in each environment. Defaults to the local Vite dev server.
+# Credentials stay disabled since auth is a Bearer header, not a browser cookie.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://ai-financial-copliot.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.exception_handler(FastAPIHTTPException)
 async def custom_http_exception_handler(request: Request, exc: FastAPIHTTPException):
@@ -63,7 +86,8 @@ app.include_router(simulate_router, prefix="/api")
 app.include_router(financial_data_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(copilot_router, prefix="/api")
-
+app.include_router(auth_router)
+ 
 
 @app.get("/")
 def root():

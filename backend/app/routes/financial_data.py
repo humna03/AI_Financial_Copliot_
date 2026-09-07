@@ -4,6 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
+from app.auth import get_current_user, User as AuthUser
 from app.database import get_session
 from app.models import Expense, FinancialProfile, Goal, User
 from app.schemas import (
@@ -23,14 +24,53 @@ from app.schemas import (
 router = APIRouter()
 
 
+def get_owned_financial_user(
+    session: Session, user_id: int, current_user: AuthUser
+) -> User:
+    """Loads the financial profile for `user_id` and verifies it belongs to the
+    authenticated caller. 404 if it doesn't exist at all, 403 if it exists but
+    belongs to someone else (or has no verified owner)."""
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "NOT_FOUND", "message": f"User {user_id} not found"}},
+        )
+    if user.auth_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": {
+                    "code": "FORBIDDEN",
+                    "message": "You do not have access to this financial profile.",
+                }
+            },
+        )
+    return user
+
+
 @router.post(
     "/users",
     response_model=UserDataResponse,
     status_code=status.HTTP_201_CREATED,
     responses={422: {"model": ErrorResponse, "description": "Validation failure"}},
 )
-def create_user(user_data: UserCreate, session: Session = Depends(get_session)):
-    user = User(language=user_data.language)
+def create_user(
+    user_data: UserCreate,
+    session: Session = Depends(get_session),
+    current_user: AuthUser = Depends(get_current_user),
+):
+    # One financial profile per authenticated account: if this account already
+    # owns one (e.g. the client lost its local financial-user-id mapping and
+    # is calling this again), return the existing profile instead of creating
+    # a duplicate. A DB-level unique index also backstops this against races.
+    existing = session.exec(
+        select(User).where(User.auth_user_id == current_user.id)
+    ).first()
+    if existing:
+        return UserDataResponse(data=UserResponse(user_id=existing.id, language=existing.language))
+
+    user = User(language=user_data.language, auth_user_id=current_user.id)
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -41,19 +81,18 @@ def create_user(user_data: UserCreate, session: Session = Depends(get_session)):
     "/users/{user_id}/financial-data",
     response_model=FinancialDataDataResponse,
     responses={
+        403: {"model": ErrorResponse, "description": "Financial profile belongs to another user"},
         404: {"model": ErrorResponse, "description": "User not found"},
         422: {"model": ErrorResponse, "description": "Validation failure"},
     },
 )
 def upsert_financial_data(
-    user_id: int, request: FinancialDataRequest, session: Session = Depends(get_session)
+    user_id: int,
+    request: FinancialDataRequest,
+    session: Session = Depends(get_session),
+    current_user: AuthUser = Depends(get_current_user),
 ):
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": f"User {user_id} not found"}},
-        )
+    get_owned_financial_user(session, user_id, current_user)
 
     existing_profile = session.exec(
         select(FinancialProfile).where(FinancialProfile.user_id == user_id)
@@ -99,15 +138,17 @@ def upsert_financial_data(
 @router.get(
     "/users/{user_id}/financial-data",
     response_model=FinancialDataDataResponse,
-    responses={404: {"model": ErrorResponse, "description": "User or financial data not found"}},
+    responses={
+        403: {"model": ErrorResponse, "description": "Financial profile belongs to another user"},
+        404: {"model": ErrorResponse, "description": "User or financial data not found"},
+    },
 )
-def get_financial_data(user_id: int, session: Session = Depends(get_session)):
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": f"User {user_id} not found"}},
-        )
+def get_financial_data(
+    user_id: int,
+    session: Session = Depends(get_session),
+    current_user: AuthUser = Depends(get_current_user),
+):
+    get_owned_financial_user(session, user_id, current_user)
 
     profile = session.exec(
         select(FinancialProfile).where(FinancialProfile.user_id == user_id)
@@ -134,17 +175,18 @@ def get_financial_data(user_id: int, session: Session = Depends(get_session)):
     response_model=GoalDataResponse,
     status_code=status.HTTP_200_OK,
     responses={
+        403: {"model": ErrorResponse, "description": "Financial profile belongs to another user"},
         404: {"model": ErrorResponse, "description": "User not found"},
         422: {"model": ErrorResponse, "description": "Validation failure"},
     },
 )
-def upsert_goal(user_id: int, request: GoalRequest, session: Session = Depends(get_session)):
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": f"User {user_id} not found"}},
-        )
+def upsert_goal(
+    user_id: int,
+    request: GoalRequest,
+    session: Session = Depends(get_session),
+    current_user: AuthUser = Depends(get_current_user),
+):
+    get_owned_financial_user(session, user_id, current_user)
 
     existing_goal = session.exec(select(Goal).where(Goal.user_id == user_id)).first()
     if existing_goal:
@@ -177,15 +219,17 @@ def upsert_goal(user_id: int, request: GoalRequest, session: Session = Depends(g
 @router.get(
     "/users/{user_id}/goal",
     response_model=GoalDataResponse,
-    responses={404: {"model": ErrorResponse, "description": "User or goal not found"}},
+    responses={
+        403: {"model": ErrorResponse, "description": "Financial profile belongs to another user"},
+        404: {"model": ErrorResponse, "description": "User or goal not found"},
+    },
 )
-def get_goal(user_id: int, session: Session = Depends(get_session)):
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": f"User {user_id} not found"}},
-        )
+def get_goal(
+    user_id: int,
+    session: Session = Depends(get_session),
+    current_user: AuthUser = Depends(get_current_user),
+):
+    get_owned_financial_user(session, user_id, current_user)
 
     goal = session.exec(select(Goal).where(Goal.user_id == user_id)).first()
     if not goal:

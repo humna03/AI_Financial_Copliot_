@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 
 from app.database import get_session
 from app.models import Expense, FinancialProfile, Goal, User
+from app.auth import get_current_user, User as AuthUser
 from app.schemas import SimulateDataResponse, SimulateRequest, SimulateResponse, SimulationCurrent, SimulationSimulated
 from app.schemas.common import ErrorResponse
 from app.services.what_if_engine import run_simulation
@@ -10,12 +11,22 @@ from app.services.what_if_engine import run_simulation
 router = APIRouter()
 
 
-def get_user_or_404(session: Session, user_id: int) -> User:
+def get_user_or_404(session: Session, user_id: int, current_user: AuthUser) -> User:
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": f"User {user_id} not found"}},
+        )
+    if user.auth_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": {
+                    "code": "FORBIDDEN",
+                    "message": "You do not have access to this financial profile.",
+                }
+            },
         )
     return user
 
@@ -45,14 +56,18 @@ def get_goal(session: Session, user_id: int) -> Goal | None:
     response_model=SimulateDataResponse,
     responses={
         400: {"model": ErrorResponse, "description": "Invalid category or amount"},
+        403: {"model": ErrorResponse, "description": "Financial profile belongs to another user"},
         404: {"model": ErrorResponse, "description": "User, financial data, or goal not found"},
         422: {"model": ErrorResponse, "description": "Validation failure"},
     },
 )
 def run_what_if_simulation(
-    user_id: int, request: SimulateRequest, session: Session = Depends(get_session)
+    user_id: int,
+    request: SimulateRequest,
+    session: Session = Depends(get_session),
+    current_user: AuthUser = Depends(get_current_user),
 ):
-    get_user_or_404(session, user_id)
+    get_user_or_404(session, user_id, current_user)
 
     profile = get_financial_profile_or_404(session, user_id)
     expenses = get_expenses(session, user_id)

@@ -1,0 +1,229 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F8FBF9;
+  --sidebar: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-hover: #F1FAF5;
+  --primary: #1B5E3B;
+  --primary-bright: #1B5E3B;
+  --text-primary: #082A20;
+  --text-secondary: #4E8172;
+  --border: #C8E3D8;
+  --accent: #A7F3A0;
+  --light-green: #DDF7E2;
+  --gold: #D9A514;
+  --danger: #FF6B6B;
+  --danger-soft: #FFF0F0;
+  --shadow-rgb: 8 42 32;
+  --background-rgb: 248 251 249;
+  --sidebar-rgb: 255 255 255;
+  --surface-rgb: 255 255 255;
+  --surface-hover-rgb: 241 250 245;
+  --primary-rgb: 27 94 59;
+  --text-primary-rgb: 8 42 32;
+  --text-secondary-rgb: 78 129 114;
+  --border-rgb: 200 227 216;
+  --accent-rgb: 167 243 160;
+  --light-green-rgb: 221 247 226;
+  --gold-rgb: 217 165 20;
+  --danger-rgb: 255 107 107;
+  --danger-soft-rgb: 255 240 240;
+  --ink-50-rgb: 248 251 249;
+  --ink-100-rgb: 221 247 226;
+  --ink-200-rgb: 200 227 216;
+  --ink-300-rgb: 126 167 151;
+  --ink-400-rgb: 78 129 114;
+  --ink-500-rgb: 27 94 59;
+  --ink-600-rgb: 27 94 59;
+  --ink-700-rgb: 27 94 59;
+  --ink-800-rgb: 8 42 32;
+  --ink-900-rgb: 8 42 32;
+  --ink-950-rgb: 248 251 249;
+}
+
+.dark,
+[data-theme='dark'] {
+  --background: #020F0D;
+  --sidebar: #061A17;
+  --surface: #0E2925;
+  --surface-hover: #123B35;
+  --primary: #00D1B2;
+  --primary-bright: #00E6C3;
+  --text-primary: #F5FFFC;
+  --text-secondary: #8DB9AE;
+  --border: #174A41;
+  --accent: #00E6C3;
+  --dark-green: #062B24;
+  --gold: #FACC15;
+  --danger: #FF6B6B;
+  --danger-soft: #31191B;
+  --shadow-rgb: 0 0 0;
+  --background-rgb: 2 15 13;
+  --sidebar-rgb: 6 26 23;
+  --surface-rgb: 14 41 37;
+  --surface-hover-rgb: 18 59 53;
+  --primary-rgb: 0 209 178;
+  --text-primary-rgb: 245 255 252;
+  --text-secondary-rgb: 141 185 174;
+  --border-rgb: 23 74 65;
+  --accent-rgb: 0 230 195;
+  --dark-green-rgb: 6 43 36;
+  --gold-rgb: 250 204 21;
+  --danger-rgb: 255 107 107;
+  --danger-soft-rgb: 49 25 27;
+  --ink-50-rgb: 245 255 252;
+  --ink-100-rgb: 245 255 252;
+  --ink-200-rgb: 190 218 209;
+  --ink-300-rgb: 141 185 174;
+  --ink-400-rgb: 141 185 174;
+  --ink-500-rgb: 0 230 195;
+  --ink-600-rgb: 0 209 178;
+  --ink-700-rgb: 23 74 65;
+  --ink-800-rgb: 18 59 53;
+  --ink-900-rgb: 14 41 37;
+  --ink-950-rgb: 2 15 13;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-ink-50 text-ink-900 font-body antialiased dark:bg-ink-950 dark:text-ink-100;
+  transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+button,
+input,
+select,
+textarea,
+[role='button'] {
+  transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Page-level entrance animation, retriggered per route via a `key` on the wrapper. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition {
+  animation: page-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Keeps anchored landing-page sections from being tucked under the sticky
+   navbar when reached via nav links, hash URLs, or smooth scroll. */
+.landing-section-anchor {
+  scroll-margin-top: 5.5rem;
+}
+
+@keyframes accordion-down {
+  from {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+  to {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+.mobile-nav-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mobile-nav-panel.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.mobile-nav-panel > div {
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Respect the user's motion preference: keep state changes, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+h1, h2, h3, h4, .font-display {
+  @apply font-sans;
+}
+
+[dir='rtl'] body {
+  font-family: 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', serif;
+  line-height: 2;
+  text-align: start;
+}
+
+[dir='rtl'] h1,
+[dir='rtl'] h2,
+[dir='rtl'] h3,
+[dir='rtl'] h4,
+[dir='rtl'] .font-display {
+  font-family: 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', serif;
+  line-height: 1.8;
+}
+
+[dir='rtl'] input,
+[dir='rtl'] textarea,
+[dir='rtl'] select {
+  text-align: start;
+}
+
+[dir='rtl'] input[type='number'],
+[dir='rtl'] input[type='email'] {
+  direction: ltr;
+  text-align: start;
+}
+
+[dir='rtl'] .tabular-nums,
+[dir='rtl'] [data-numeric] {
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-ink-200 dark:bg-ink-800 rounded-full;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary-bright);
+  outline-offset: 2px;
+}

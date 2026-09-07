@@ -8,6 +8,7 @@ from sqlmodel import Session, select
 
 from app.database import get_session
 from app.models import Expense, FinancialProfile, Goal, ScoreResult, User
+from app.auth import get_current_user, User as AuthUser
 from app.schemas import ScoreDataResponse, ScoreFactor as ScoreFactorSchema, ScoreResponse
 from app.schemas.common import ErrorResponse
 from app.services.score_engine import ScoreFactor, calculate_score
@@ -18,12 +19,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def get_user_or_404(session: Session, user_id: int) -> User:
+def get_user_or_404(session: Session, user_id: int, current_user: AuthUser) -> User:
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "NOT_FOUND", "message": f"User {user_id} not found"}},
+        )
+    if user.auth_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": {
+                    "code": "FORBIDDEN",
+                    "message": "You do not have access to this financial profile.",
+                }
+            },
         )
     return user
 
@@ -151,13 +162,18 @@ def save_score_result(session: Session, user_id: int, score_value: int, factors_
     "/users/{user_id}/score",
     response_model=ScoreDataResponse,
     responses={
+        403: {"model": ErrorResponse, "description": "Financial profile belongs to another user"},
         404: {"model": ErrorResponse, "description": "User or financial data not found"},
         500: {"model": ErrorResponse, "description": "Calculation failure"},
         502: {"model": ErrorResponse, "description": "Gemini unavailable — score and factors still returned with default explanation"},
     },
 )
-def get_score(user_id: int, session: Session = Depends(get_session)):
-    user = get_user_or_404(session, user_id)
+def get_score(
+    user_id: int,
+    session: Session = Depends(get_session),
+    current_user: AuthUser = Depends(get_current_user),
+):
+    user = get_user_or_404(session, user_id, current_user)
     profile = get_financial_profile_or_404(session, user_id)
     expenses = get_expenses(session, user_id)
     if not expenses:

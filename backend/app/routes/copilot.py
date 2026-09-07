@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.database import get_session
 from app.models import User, FinancialProfile
+from app.auth import get_current_user, User as AuthUser
 from app.schemas.copilot import CopilotAskRequest, CopilotAskDataResponse, CopilotAskResponse
 from app.schemas.common import ErrorResponse
 from app.services.copilot_context import assemble_copilot_context
 from app.services.copilot_service import build_copilot_prompt
 from app.services.gemini_client import gemini_client
+from app.services.language_detect import detect_conversation_language
 
 router = APIRouter()
 
@@ -18,6 +20,7 @@ router = APIRouter()
     status_code=status.HTTP_200_OK,
     responses={
         400: {"model": ErrorResponse, "description": "Invalid request (e.g. empty question)"},
+        403: {"model": ErrorResponse, "description": "Financial profile belongs to another user"},
         404: {"model": ErrorResponse, "description": "User or financial data not found"},
         422: {"model": ErrorResponse, "description": "Validation failure"},
     },
@@ -26,6 +29,7 @@ def ask_copilot(
     user_id: int,
     request: CopilotAskRequest,
     session: Session = Depends(get_session),
+    current_user: AuthUser = Depends(get_current_user),
 ):
     # Verify user exists
     user = session.get(User, user_id)
@@ -35,12 +39,20 @@ def ask_copilot(
             detail={"error": {"code": "NOT_FOUND", "message": f"User {user_id} not found"}},
         )
 
-    # Verify financial profile exists (no context exists otherwise)
-    profile = session.exec(
-        select(FinancialProfile).where(FinancialProfile.user_id == user_id)
-    ).first() if "select" in globals() else None  # wait, use select from sqlmodel
+    # Verify the caller's JWT identity actually owns this financial profile —
+    # otherwise Copilot would answer questions using a stranger's real financial data.
+    if user.auth_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": {
+                    "code": "FORBIDDEN",
+                    "message": "You do not have access to this financial profile.",
+                }
+            },
+        )
 
-    from sqlmodel import select
+    # Verify financial profile exists (no context exists otherwise)
     profile = session.exec(
         select(FinancialProfile).where(FinancialProfile.user_id == user_id)
     ).first()
@@ -58,7 +70,18 @@ def ask_copilot(
             detail={"error": {"code": "NOT_FOUND", "message": str(e)}},
         )
 
-    prompt = build_copilot_prompt(context, request.question)
+    # Detect the language of THIS message from its actual text, using the
+    # account's stored UI language only as the last-resort default for a
+    # first, totally ambiguous message (see language_detect module docstring
+    # for why the account preference is not used to override real content).
+    history_dicts = [turn.model_dump() for turn in (request.history or [])]
+    detected_language = detect_conversation_language(
+        history_dicts, request.question, fallback_language=context.language
+    )
+
+    prompt = build_copilot_prompt(
+        context, request.question, history=history_dicts, detected_language=detected_language
+    )
 
     try:
         answer = gemini_client.generate_content(prompt)
@@ -75,6 +98,8 @@ def ask_copilot(
     return CopilotAskDataResponse(
         data=CopilotAskResponse(
             answer=answer,
-            language=context.language,
+            # The language actually detected for this turn, not the
+            # account's stored UI language — see comment above.
+            language=detected_language,
         )
     )

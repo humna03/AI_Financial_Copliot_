@@ -69,6 +69,15 @@ def calculate_goal_progress(monthly_savings: float, goal: Optional[Goal]) -> Opt
     return round(min(progress, 100), 1)
 
 
+def months_to_goal(monthly_savings: float, goal: Optional[Goal]) -> Optional[int]:
+    if not goal or goal.target_amount <= 0:
+        return None
+    if monthly_savings <= 0:
+        return None
+    months = goal.target_amount / monthly_savings
+    return round(months)
+
+
 def calculate_score(
     profile: FinancialProfile,
     expenses: list[Expense],

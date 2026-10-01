@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Any
 from sqlmodel import Session, select
 
 from app.models import User, FinancialProfile, Expense, Goal, ScoreResult
-from app.services.score_engine import calculate_goal_progress
+from app.services.score_engine import calculate_goal_progress, months_to_goal
 
 
 @dataclass

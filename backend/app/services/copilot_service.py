@@ -103,5 +103,8 @@ Instructions:
 2. Keep the advice practical, concise, and helpful.
 3. If a needed piece of financial data is not present in the context above, say plainly that it isn't available yet rather than inventing a number.
 4. Follow the language instructions above exactly.
+5. Use only the numbers in the context. Do not do your own arithmetic.
+6. Never say the user already saved or achieved a projected amount.
+7. Do not recommend specific funds, products or return percentages.
 """
     return prompt
